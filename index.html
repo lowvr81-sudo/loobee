@@ -1,0 +1,301 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loobee — Watch, Upload, Share</title>
+<style>
+:root{color-scheme:dark;--bg:#0f0f12;--panel:#19191f;--line:#303039;--text:#f6f6fa;--muted:#aaaab8;--red:#f32642;--purple:#8b5cf6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px Arial,sans-serif}
+button,input,textarea{font:inherit}
+button{cursor:pointer;border:0;border-radius:9px;padding:10px 15px;background:#292932;color:white}
+button:hover{filter:brightness(1.16)}
+.primary{background:var(--red);font-weight:bold}
+header{height:68px;display:flex;align-items:center;gap:16px;padding:0 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#101014f5;z-index:5}
+.logo{display:flex;align-items:center;gap:9px;font-size:24px;font-weight:800;letter-spacing:-1px;white-space:nowrap}
+.logo-mark{background:var(--red);width:38px;height:27px;border-radius:8px;display:grid;place-items:center;color:white;font-size:18px;font-weight:900;letter-spacing:0}
+.search{display:flex;max-width:650px;margin:auto;width:100%;gap:8px}
+input,textarea{background:#111116;border:1px solid #393943;color:white;border-radius:9px;padding:12px;width:100%;outline:none}
+input:focus,textarea:focus{border-color:var(--purple)}
+.header-actions{display:flex;gap:8px;white-space:nowrap}
+.layout{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 68px)}
+aside{padding:20px 12px;border-right:1px solid var(--line)}
+.nav{display:block;width:100%;text-align:left;background:transparent;margin:4px 0}
+.nav.active,.nav:hover{background:#282832}
+main{padding:25px;min-width:0}
+h1{font-size:26px;margin:0 0 8px}
+.sub{color:var(--muted);margin:0 0 24px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.chip{border:1px solid var(--line);background:#1b1b22}
+.chip.active{background:#eee;color:#111}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:24px 17px}
+.video{min-width:0;cursor:pointer}
+.thumb{height:145px;background:#202027;border:1px solid var(--line);border-radius:13px;overflow:hidden;display:grid;place-items:center;color:#777;position:relative}
+.thumb video,.thumb img{width:100%;height:100%;object-fit:cover}
+.play{position:absolute;background:#0009;border-radius:8px;padding:7px 12px}
+.video h3{font-size:15px;line-height:1.35;margin:10px 0 5px;overflow-wrap:anywhere}
+.meta{color:var(--muted);font-size:13px;line-height:1.6}
+.channel-card{padding:17px;background:var(--panel);border:1px solid var(--line);border-radius:13px}
+.avatar{display:grid;place-items:center;background:var(--purple);width:48px;height:48px;border-radius:50%;font-weight:bold;font-size:20px;margin-bottom:10px}
+.empty{padding:48px 15px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+.error{color:#ff8e9d;background:#3b1820;padding:12px;border-radius:9px;margin:12px 0;white-space:pre-wrap}
+.success{color:#a9f0bf}
+.modal{position:fixed;inset:0;background:#000c;z-index:10;display:none;align-items:center;justify-content:center;padding:18px}
+.modal.open{display:flex}
+.dialog{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:min(650px,100%);max-height:90vh;overflow:auto;padding:23px}
+.dialog h2{margin-top:0}
+.form-row{display:flex;gap:10px;margin:12px 0}
+.form-row>*{flex:1;min-width:0}
+label{display:block;margin:13px 0 6px;color:#ddd}
+video.player{width:100%;max-height:55vh;background:black;border-radius:10px}
+a{color:#c4b5fd}
+.hidden{display:none!important}
+@media(max-width:720px){header{padding:0 10px;gap:9px;flex-wrap:wrap;height:auto;min-height:64px}.logo{font-size:20px}.logo-mark{width:32px}.search{order:3;max-width:none;padding-bottom:10px}.header-actions{margin-left:auto}.layout{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);display:flex;gap:4px;padding:8px;overflow:auto}.nav{width:auto;white-space:nowrap;margin:0}main{padding:17px}.grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:18px 12px}.thumb{height:110px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="logo-mark">L</span> Loobee</div>
+  <form class="search" id="searchForm">
+    <input id="searchInput" placeholder="Search Loobee" aria-label="Search videos">
+    <button type="submit">Search</button>
+  </form>
+  <div class="header-actions">
+    <button id="uploadOpen" class="primary">＋ Upload</button>
+    <button id="authOpen">Sign in</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <button class="nav active" data-page="home">⌂ Home</button>
+    <button class="nav" data-page="channels">◎ Channels</button>
+    <button class="nav" data-page="subscriptions">♡ Subscriptions</button>
+    <button class="nav" data-page="myvideos">▣ My videos</button>
+  </aside>
+  <main>
+    <h1 id="pageTitle">Explore Loobee</h1>
+    <p class="sub" id="pageSubtitle">Videos uploaded by the Loobee community.</p>
+    <div class="chips" id="chips">
+      <button class="chip active" data-category="All">All</button>
+      <button class="chip" data-category="Gaming">Gaming</button>
+      <button class="chip" data-category="Music">Music</button>
+      <button class="chip" data-category="Tech">Tech</button>
+      <button class="chip" data-category="Other">Other</button>
+    </div>
+    <div id="status" aria-live="polite"></div>
+    <div id="content" class="grid"></div>
+  </main>
+</div>
+
+<div class="modal" id="authModal">
+  <div class="dialog">
+    <button style="float:right" data-close="authModal">✕</button>
+    <h2>Welcome to Loobee</h2>
+    <p class="meta">Sign in or create an account.</p>
+    <button class="primary" id="googleLogin" style="width:100%">Continue with Google</button>
+    <p class="meta" style="text-align:center">or use your email</p>
+    <form id="authForm">
+      <label for="email">Email</label><input id="email" type="email" autocomplete="email" required>
+      <label for="password">Password</label><input id="password" type="password" minlength="6" autocomplete="current-password" required>
+      <div class="form-row"><button class="primary" type="submit" value="signin">Sign in</button><button type="button" id="signup">Create account</button></div>
+    </form>
+    <div id="authMessage" aria-live="polite"></div>
+  </div>
+</div>
+
+<div class="modal" id="uploadModal">
+  <div class="dialog">
+    <button style="float:right" data-close="uploadModal">✕</button>
+    <h2>Upload a video</h2>
+    <p class="meta">Uploads are public. Only upload videos you have permission to share.</p>
+    <form id="uploadForm">
+      <label for="videoTitle">Video title</label><input id="videoTitle" maxlength="120" required>
+      <label for="videoDescription">Description</label><textarea id="videoDescription" rows="3" maxlength="3000"></textarea>
+      <label for="videoCategory">Category</label>
+      <select id="videoCategory" style="width:100%;padding:11px;background:#111116;color:white;border:1px solid #393943;border-radius:9px">
+        <option>Gaming</option><option>Music</option><option>Tech</option><option>Other</option>
+      </select>
+      <label for="videoFile">Video file</label><input id="videoFile" type="file" accept="video/*" required>
+      <label for="thumbnailFile">Thumbnail (optional)</label><input id="thumbnailFile" type="file" accept="image/png,image/jpeg,image/webp">
+      <div class="form-row"><button class="primary" type="submit">Upload video</button><button type="button" data-close="uploadModal">Cancel</button></div>
+      <div id="uploadMessage" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="playerModal">
+  <div class="dialog">
+    <button style="float:right" data-close="playerModal">✕</button>
+    <h2 id="playerTitle">Video</h2>
+    <video class="player" id="player" controls playsinline></video>
+    <p id="playerDescription"></p>
+    <p class="meta" id="playerMeta"></p>
+    <div id="playerActions"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* Add your Supabase project URL and publishable/anon key here. */
+const SUPABASE_URL = "https://npnxfvqnjdvqgyecoxdu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_jH73fmYtkQ1Vkz2BsrK4Wg_SSZFvcjB";
+const configured = SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_URL.includes("PASTE_") && !SUPABASE_KEY.includes("PASTE_");
+const db = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+const $ = id => document.getElementById(id);
+let user = null, page = "home", category = "All", searchTerm = "";
+let videos = [], profiles = [];
+
+function message(id, text, error=false) {
+  const el=$(id); el.textContent=text; el.className=error?"error":"";
+}
+function modal(id, open=true){$(id).classList.toggle("open",open)}
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>modal(b.dataset.close,false));
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)modal(m.id,false)}));
+$("authOpen").onclick=()=>modal("authModal");
+$("uploadOpen").onclick=()=>{if(!user){modal("authModal");message("authMessage","Sign in before uploading.");return}modal("uploadModal")};
+$("googleLogin").onclick=async()=>{
+  if(!db)return setupWarning("authMessage");
+  const {error}=await db.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname}});
+  if(error)message("authMessage",error.message,true);
+};
+$("authForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(!db)return setupWarning("authMessage");
+  const email=$("email").value.trim(),password=$("password").value;
+  const {error}=await db.auth.signInWithPassword({email,password});
+  if(error)message("authMessage",error.message,true);
+};
+$("signup").onclick=async()=>{
+  if(!db)return setupWarning("authMessage");
+  const email=$("email").value.trim(),password=$("password").value;
+  if(!email||password.length<6){message("authMessage","Enter an email and a password of at least 6 characters.",true);return}
+  const {error}=await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+  message("authMessage",error?error.message:"Check your email for a confirmation link.",!!error);
+};
+function setupWarning(id){message(id,"Setup required: add your Supabase project URL and publishable/anon key in index.html, then run the SQL setup file.",true)}
+
+async function refreshUser(){
+  if(!db)return;
+  const {data}=await db.auth.getSession(); user=data.session?.user||null;
+  $("authOpen").textContent=user?(user.email?.split("@")[0]||"Account"):"Sign in";
+  $("uploadOpen").textContent=user?"＋ Upload":"＋ Upload";
+}
+async function loadData(){
+  if(!db){$("content").innerHTML='<div class="empty">Loobee is ready for setup. Connect Supabase to load real videos and channels.</div>';return}
+  $("content").innerHTML='<div class="empty">Loading Loobee…</div>';
+  let q=db.from("videos").select("id,title,description,category,video_url,thumbnail_url,created_at,user_id,profiles(username)").order("created_at",{ascending:false}).limit(100);
+  if(category!=="All")q=q.eq("category",category);
+  if(searchTerm)q=q.ilike("title",`%${searchTerm.replace(/[%_,]/g," ")}%`);
+  if(page==="myvideos"){if(!user){showEmpty("Sign in to see your videos.");return}q=q.eq("user_id",user.id)}
+  if(page==="subscriptions"){showEmpty("Subscriptions are not included in this starter version yet.");return}
+  const {data,error}=await q;
+  if(error){message("status","Could not load videos: "+error.message,true);$("content").innerHTML="";return}
+  videos=data||[];
+  if(page==="channels"){await loadChannels();return}
+  renderVideos(videos);
+}
+function showEmpty(t){$("content").innerHTML=`<div class="empty">${escapeHtml(t)}</div>`}
+function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function renderVideos(list){
+  $("status").textContent="";
+  if(!list.length){showEmpty("Error 404 — no videos found. Try another search or check back later.");return}
+  $("content").innerHTML=list.map(v=>`
+    <article class="video" data-video="${escapeHtml(v.id)}">
+      <div class="thumb">${v.thumbnail_url?`<img loading="lazy" src="${escapeHtml(v.thumbnail_url)}" alt="">`:'<span>No thumbnail</span>'}<span class="play">▶</span></div>
+      <h3>${escapeHtml(v.title)}</h3>
+      <div class="meta">${escapeHtml(v.profiles?.username||"Loobee creator")}<br>${new Date(v.created_at).toLocaleDateString()}</div>
+    </article>`).join("");
+  document.querySelectorAll("[data-video]").forEach(el=>el.onclick=()=>playVideo(el.dataset.video));
+}
+async function playVideo(id){
+  const v=videos.find(x=>String(x.id)===String(id));
+  if(!v){message("status","Error 404 — video not found.",true);return}
+  $("playerTitle").textContent=v.title;$("playerDescription").textContent=v.description||"";
+  $("playerMeta").textContent="Channel: "+(v.profiles?.username||"Loobee creator");
+  const p=$("player");p.pause();p.src=v.video_url;p.onerror=()=>message("playerMeta","Error 404 — this video could not be loaded. It may have been removed or its link may be invalid.",true);
+  $("playerActions").innerHTML="";
+  modal("playerModal");
+}
+async function loadChannels(){
+  const {data,error}=await db.from("profiles").select("id,username,created_at").order("created_at",{ascending:false}).limit(100);
+  if(error){message("status",error.message,true);return}
+  profiles=data||[];
+  if(!profiles.length){showEmpty("No channels found yet. Create an account to start a channel.");return}
+  $("content").innerHTML=profiles.map(p=>`<div class="channel-card"><div class="avatar">${escapeHtml((p.username||"?").slice(0,1).toUpperCase())}</div><h3>${escapeHtml(p.username||"Loobee creator")}</h3><p class="meta">Loobee channel</p><button data-channel="${escapeHtml(p.id)}">View videos</button></div>`).join("");
+  document.querySelectorAll("[data-channel]").forEach(b=>b.onclick=async()=>{
+    page="channel";const id=b.dataset.channel;
+    const {data,error}=await db.from("videos").select("id,title,description,category,video_url,thumbnail_url,created_at,user_id,profiles(username)").eq("user_id",id).order("created_at",{ascending:false});
+    if(error){message("status",error.message,true);return}
+    videos=data||[];$("pageTitle").textContent="Channel";$("pageSubtitle").textContent="Videos from this creator";$("chips").classList.add("hidden");renderVideos(videos);
+  });
+}
+document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{
+  page=b.dataset.page;category="All";searchTerm="";
+  $("searchInput").value="";$("chips").classList.remove("hidden");
+  document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));
+  $("pageTitle").textContent=({home:"Explore Loobee",channels:"Channels",subscriptions:"Subscriptions",myvideos:"My videos"})[page]||"Loobee";
+  $("pageSubtitle").textContent=page==="channels"?"Discover Loobee creators.":"Videos uploaded by the Loobee community.";
+  loadData();
+});
+document.querySelectorAll("[data-category]").forEach(b=>b.onclick=()=>{
+  category=b.dataset.category;page="home";
+  document.querySelectorAll("[data-category]").forEach(x=>x.classList.toggle("active",x===b));
+  loadData();
+});
+$("searchForm").onsubmit=e=>{e.preventDefault();searchTerm=$("searchInput").value.trim();page="home";loadData()};
+$("uploadForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(!db||!user){setupWarning("uploadMessage");return}
+  const file=$("videoFile").files[0],thumb=$("thumbnailFile").files[0];
+  if(!file||!file.type.startsWith("video/")){message("uploadMessage","Choose a valid video file.",true);return}
+  if(file.size>500*1024*1024){message("uploadMessage","This starter allows videos up to 500 MB. Increase the limit only after configuring your storage and upload strategy.",true);return}
+  message("uploadMessage","Uploading video…");
+  try{
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const videoPath=`${user.id}/${crypto.randomUUID()}-${safeName}`;
+    const up=await db.storage.from("videos").upload(videoPath,file,{upsert:false,contentType:file.type});
+    if(up.error)throw up.error;
+    const {data:videoUrlData}=db.storage.from("videos").getPublicUrl(videoPath);
+    let thumbnailUrl=null;
+    if(thumb){
+      if(thumb.size>5*1024*1024)throw new Error("Thumbnail must be under 5 MB.");
+      const path=`${user.id}/${crypto.randomUUID()}-${thumb.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+      const t=await db.storage.from("thumbnails").upload(path,thumb,{upsert:false,contentType:thumb.type});
+      if(t.error)throw t.error;
+      thumbnailUrl=db.storage.from("thumbnails").getPublicUrl(path).data.publicUrl;
+    }
+    const {error}=await db.from("videos").insert({
+      user_id:user.id,title:$("videoTitle").value.trim(),
+      description:$("videoDescription").value.trim(),
+      category:$("videoCategory").value,video_url:videoUrlData.publicUrl,
+      thumbnail_url:thumbnailUrl
+    });
+    if(error)throw error;
+    message("uploadMessage","Video uploaded successfully!");
+    $("uploadForm").reset();await loadData();
+  }catch(err){message("uploadMessage","Upload failed: "+(err.message||"Unknown error"),true)}
+};
+async function init(){
+  if(!db){showEmpty("To activate Loobee, configure Supabase using the included setup instructions.");return}
+  await refreshUser();
+  db.auth.onAuthStateChange(async(_event,session)=>{
+    user=session?.user||null;
+    $("authOpen").textContent=user?(user.email?.split("@")[0]||"Account"):"Sign in";
+    if(user){
+      const username=(user.user_metadata?.user_name||user.user_metadata?.name||user.email?.split("@")[0]||"creator").slice(0,40);
+      await db.from("profiles").upsert({id:user.id,username},{onConflict:"id",ignoreDuplicates:true});
+      modal("authModal",false);
+    }
+    loadData();
+  });
+  await loadData();
+}
+init();
+</script>
+</body>
+</html>
