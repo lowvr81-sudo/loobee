@@ -318,24 +318,45 @@ $('refreshReportsBtn').onclick=loadAdminReports;
 async function loadAdminReports(){const box=$('adminReports');if(!user||user.email?.toLowerCase()!=='lowvr81@gmail.com'){box.textContent='Admin access required.';return}box.textContent='Loading reports…';const{data,error}=await db.from('video_reports').select('id,video_id,reporter_id,reason,details,status,created_at').order('created_at',{ascending:false}).limit(100);if(error){box.textContent='Could not load reports: '+error.message;return}if(!data?.length){box.textContent='No reports to review.';return}box.replaceChildren();for(const r of data){const card=document.createElement('div');card.className='warning-card';const title=document.createElement('strong');title.textContent=`${r.reason} · ${r.status}`;const details=document.createElement('p');details.textContent=r.details||'No details provided.';const meta=document.createElement('small');meta.textContent=new Date(r.created_at).toLocaleString()+' · Video ID '+r.video_id;const row=document.createElement('div');row.className='feature-row';const reviewed=document.createElement('button');reviewed.textContent='Mark reviewed';reviewed.onclick=async()=>{const{error}=await db.from('video_reports').update({status:'reviewing'}).eq('id',r.id);if(error)alert('Could not update report: '+error.message);else loadAdminReports()};const dismiss=document.createElement('button');dismiss.textContent='Dismiss report';dismiss.onclick=async()=>{const{error}=await db.from('video_reports').update({status:'dismissed'}).eq('id',r.id);if(error)alert('Could not dismiss report: '+error.message);else loadAdminReports()};const warn=document.createElement('button');warn.textContent='Warn video creator';warn.onclick=async()=>{const{data:v,error:ve}=await db.from('videos').select('user_id,title').eq('id',r.video_id).maybeSingle();if(ve||!v){alert('Video or creator not found.');return}const reason='Reported video: '+r.reason;const detailsText=`A video you uploaded was reported. Video: ${v.title||r.video_id}. Please review Loobee community rules. Report details: ${r.details||'None supplied.'}`;const{error}=await db.from('account_warnings').insert({user_id:v.user_id,admin_email:'lowvr81@gmail.com',reason,details:detailsText});if(error)alert('Could not issue warning: '+error.message);else alert('Warning issued to the video creator.')};row.append(reviewed,dismiss,warn);card.append(title,details,meta,row);box.append(card)}}
 
 $('issueBanBtn').onclick=async()=>{
- const box=$('banAdminMessage');
- if(!user||user.email?.toLowerCase()!=='lowvr81@gmail.com'){box.textContent='Admin access required.';return}
- const target=$('banUserId').value.trim(),reason=$('banReason').value.trim(),duration=$('banDuration').value;
- if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(target)){box.textContent='Enter a valid account UUID.';return}
- if(target===user.id){box.textContent='You cannot ban your own admin account.';return}
- if(!reason){box.textContent='Enter a ban reason.';return}
- const banned_until=duration==='permanent'?null:new Date(Date.now()+Number(duration)*3600000).toISOString();
- box.textContent='Applying ban…';
- const {error}=await db.from('loobee_bans').upsert({user_id:target,reason,banned_until,admin_email:'lowvr81@gmail.com',created_at:new Date().toISOString()},{onConflict:'user_id'});
- if(error){box.textContent='Could not apply ban. Run Loobee-Ban-System-Setup.sql and check admin RLS: '+error.message;return}
- box.textContent=duration==='permanent'?'Permanent ban applied.':'Ban applied until '+new Date(banned_until).toLocaleString()+'.';
+ const box=$('banAdminMessage'),btn=$('issueBanBtn');
+ try{
+  const target=await validateBanAdminTarget(),reason=$('banReason').value.trim(),duration=$('banDuration').value;
+  if(!reason)throw new Error('Enter a ban reason.');
+  if(reason.length>1000)throw new Error('The ban reason must be 1,000 characters or fewer.');
+  if(!['1','24','168','720','permanent'].includes(duration))throw new Error('Choose a valid ban duration.');
+  const banned_until=duration==='permanent'?null:new Date(Date.now()+Number(duration)*3600000).toISOString();
+  btn.disabled=true;$('removeBanBtn').disabled=true;box.textContent='Applying ban…';
+  const {error}=await db.from('loobee_bans').upsert({user_id:target,reason,banned_until,admin_email:'lowvr81@gmail.com',created_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error)throw new Error('Could not apply ban. Run Loobee-Ban-System-Setup.sql and check its RLS policies: '+error.message);
+  box.textContent=duration==='permanent'?'Permanent ban applied.':'Ban applied until '+new Date(banned_until).toLocaleString()+'.';
+ }catch(e){box.textContent=e?.message||'Could not apply ban.'}
+ finally{btn.disabled=false;$('removeBanBtn').disabled=false}
 };
 $('removeBanBtn').onclick=async()=>{
- const box=$('banAdminMessage');if(!user||user.email?.toLowerCase()!=='lowvr81@gmail.com'){box.textContent='Admin access required.';return}
- const target=$('banUserId').value.trim();if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(target)){box.textContent='Enter a valid account UUID.';return}
- const {error}=await db.from('loobee_bans').delete().eq('user_id',target);
- box.textContent=error?'Could not remove ban: '+error.message:'Ban removed. The user can sign in again.';
+ const box=$('banAdminMessage'),btn=$('removeBanBtn');
+ try{
+  const target=await validateBanAdminTarget();
+  if(!confirm('Remove the active ban for this account?'))return;
+  btn.disabled=true;$('issueBanBtn').disabled=true;box.textContent='Removing ban…';
+  const {error}=await db.from('loobee_bans').delete().eq('user_id',target);
+  if(error)throw new Error('Could not remove ban: '+error.message);
+  box.textContent='Ban removed. The account can use Loobee again after refreshing or signing in.';
+ }catch(e){box.textContent=e?.message||'Could not remove ban.'}
+ finally{btn.disabled=false;$('issueBanBtn').disabled=false}
 };
+$('banUserId').addEventListener('change',async()=>{
+ const box=$('banAdminMessage');
+ if(!user||user.email?.toLowerCase()!=='lowvr81@gmail.com')return;
+ const target=$('banUserId').value.trim();
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(target)){box.textContent='';return}
+ box.textContent='Checking ban status…';
+ const {data,error}=await db.from('loobee_bans').select('reason,banned_until,created_at').eq('user_id',target).maybeSingle();
+ if(error){box.textContent='Could not check ban status: '+error.message;return}
+ if(!data){box.textContent='No ban record for this account.';return}
+ const expiry=data.banned_until?new Date(data.banned_until):null;
+ if(expiry&&expiry.getTime()<=Date.now()){box.textContent='A previous ban record exists but has expired. It will not block the account.';return}
+ box.textContent='Active '+(expiry?'temporary ban until '+expiry.toLocaleString():'permanent ban')+'. Reason: '+data.reason;
+});
 async function loadAccountWarnings(){const box=$('accountWarnings');if(!user){box.textContent='Sign in to view warnings.';return}box.textContent='Loading warnings…';const{data,error}=await db.from('account_warnings').select('id,reason,details,created_at').eq('user_id',user.id).order('created_at',{ascending:false});if(error){box.textContent='Warnings are unavailable until the SQL migration is run: '+error.message;return}if(!data?.length){box.textContent='No account warnings.';return}box.replaceChildren();for(const w of data){const el=document.createElement('div');el.className='warning-card';const title=document.createElement('strong');title.textContent=w.reason||'Account warning';const body=document.createElement('p');body.textContent=w.details||'No extra details provided.';const date=document.createElement('small');date.textContent=new Date(w.created_at).toLocaleString();el.append(title,body,date);box.append(el)}}
 async function renderWarningsPage(){if(!user){empty('Sign in to view your account warnings.');return}$('content').className='';$('content').innerHTML='<div class="profile-panel"><h2>Your account warnings</h2><div id="warningPageList">Loading…</div></div>';const{data,error}=await db.from('account_warnings').select('id,reason,details,created_at').eq('user_id',user.id).order('created_at',{ascending:false});const box=$('warningPageList');if(error){box.textContent='Could not load warnings. Run the feature SQL migration first: '+error.message;return}if(!data?.length){box.textContent='No account warnings. Keep following Loobee community rules.';return}box.replaceChildren();for(const w of data){const el=document.createElement('div');el.className='warning-card';const h=document.createElement('strong');h.textContent=w.reason||'Account warning';const p=document.createElement('p');p.textContent=w.details||'';const d=document.createElement('small');d.textContent=new Date(w.created_at).toLocaleString();el.append(h,p,d);box.append(el)}}
 $('deleteAccountBtn').onclick=async()=>{if(!user)return;const box=$('accountToolsMessage');if($('deleteAccountConfirm').value!=='DELETE'){box.textContent='Type DELETE exactly to confirm.';return}if(!confirm('This permanently deletes your Loobee account. Continue?'))return;box.textContent='Requesting secure account deletion…';const{data:{session}}=await db.auth.getSession();const{data,error}=await db.functions.invoke('delete-account',{headers:{Authorization:'Bearer '+session.access_token},body:{confirmation:'DELETE'}});if(error||data?.error){box.textContent='Account deletion did not complete. Deploy the included Supabase Edge Function and try again. '+(error?.message||data?.error||'');return}await db.auth.signOut();showModal('accountToolsModal',false);showBrowse();await loadData();alert('Your Loobee account deletion request completed.')};
