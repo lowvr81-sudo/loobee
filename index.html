@@ -145,63 +145,47 @@ async function init(){if(!db){empty('Supabase could not initialize. Check the pr
 window.addEventListener('load',dismissIntro,{once:true});setTimeout(dismissIntro,2400);
 window.addEventListener('popstate',()=>{const id=new URLSearchParams(location.search).get('v');if(id)openVideo(id,false);else{showBrowse();loadData()}});init();
 
-// Silent live refresh: keep Loobee content current without a visible refresh button or page reload.
-let loobeeLiveChannel=null, liveRefreshTimer=null, livePollTimer=null, lastLiveRefresh=0, liveRefreshBusy=false;
-async function refreshVisibleLoobeeView(kind='poll', payload=null){
-  if(!db || document.visibilityState!=='visible' || liveRefreshBusy)return;
-  liveRefreshBusy=true;
-  try{
-    const browseVisible=!$('browseView').classList.contains('hidden');
-    const profileVisible=!$('profileView').classList.contains('hidden');
-    const watchVisible=!$('watchView').classList.contains('hidden');
-    if(browseVisible){ await loadData(true); }
-    else if(profileVisible && viewedProfileId && $('profileEditPanel').classList.contains('hidden')){
-      await openProfile(viewedProfileId, profileReturnView);
-    } else if(watchVisible && currentVideo){
-      const id=currentVideo.id;
-      const {data:v,error}=await db.from('videos').select('id,title,description,category,video_url,thumbnail_url,created_at,user_id,is_private,comments_enabled,is_short,view_count,hype_count,quality_urls,profiles(username,display_name,is_verified)').eq('id',id).maybeSingle();
-      if(error || !v){redirectVideoNotFound();return;}
-      if(v.is_private && v.user_id!==user?.id){history.pushState({},'',location.pathname);showBrowse();await loadData();msg('status','This video is now private.');return;}
-      const sourceChanged=v.video_url!==currentVideo.video_url;
-      currentVideo=v;
-      $('watchTitle').textContent=v.title||'Untitled video';
-      $('watchDescription').textContent=v.description||'No description provided.';
-      $('watchChannel').innerHTML=esc(v.profiles?.display_name||v.profiles?.username||'Loobee creator')+verifiedBadge(v.profiles?.is_verified);
-      $('watchStats').textContent=(v.created_at?new Date(v.created_at).toLocaleDateString():'Loobee video')+' · '+Number(v.view_count||0).toLocaleString()+' views'+(v.is_short?' · SHORT':'');
-      $('watchPlayer').poster=v.thumbnail_url||'';
-      $('hypeCount').textContent=Number(v.hype_count||0).toLocaleString();
-      $('toggleCommentsBtn').textContent=v.comments_enabled===false?'Enable comments':'Disable comments';
-      $('togglePrivateBtn').textContent=v.is_private?'Make public':'Make private';
-      if(sourceChanged){$('watchPlayer').src=v.video_url||'';$('watchPlayer').load();}
-      await Promise.all([loadReactions(),loadComments(),loadSubscription(),loadRecommendations()]);
-    }
-    lastLiveRefresh=Date.now();
-  }catch(e){console.warn('Loobee background refresh failed:',e)}
-  finally{liveRefreshBusy=false;}
-}
-function scheduleLiveRefresh(kind, payload){
-  if(liveRefreshTimer)clearTimeout(liveRefreshTimer);
-  liveRefreshTimer=setTimeout(()=>{liveRefreshTimer=null;refreshVisibleLoobeeView(kind,payload)},400);
+// Stable live updates: never redraw/reorder existing cards in the background.
+// Only newly INSERTED videos are added to the top of the current Explore/Shorts list.
+let loobeeLiveChannel=null;
+async function addNewVideoOnly(videoId){
+  if(!db || !videoId || document.visibilityState!=='visible') return;
+  const browseVisible=!$('browseView').classList.contains('hidden');
+  if(!browseVisible || !['home','shorts'].includes(page)) return;
+  const {data:v,error}=await db.from('videos')
+    .select('id,title,description,category,video_url,thumbnail_url,created_at,user_id,is_private,comments_enabled,is_short,view_count,hype_count,quality_urls,profiles(username,display_name,is_verified)')
+    .eq('id',videoId).maybeSingle();
+  if(error || !v || (v.is_private && v.user_id!==user?.id)) return;
+  if(page==='shorts' ? v.is_short!==true : v.is_short===true) return;
+  if(category!=='All' && v.category!==category) return;
+  if(searchTerm && !(v.title||'').toLowerCase().includes(searchTerm.toLowerCase())) return;
+  if(videos.some(item=>item.id===v.id) || document.querySelector(`[data-video="${CSS.escape(v.id)}"], [data-short-card="${CSS.escape(v.id)}"]`)) return;
+  videos.unshift(v);
+  const content=$('content');
+  if(page==='shorts'){
+    if(!content.classList.contains('shorts-feed')){content.className='shorts-feed';content.innerHTML='';}
+    const card=document.createElement('article');card.className='short-card';card.dataset.shortCard=v.id;
+    card.innerHTML=`<video controls playsinline preload="metadata" src="${esc(v.video_url||'')}" poster="${esc(v.thumbnail_url||'')}" aria-label="Play ${esc(v.title||'Short')}"></video><h3>${esc(v.title||'Untitled Short')}</h3><div class="meta">${esc(v.profiles?.display_name||v.profiles?.username||'Loobee creator')}${verifiedBadge(v.profiles?.is_verified)} · ${Number(v.view_count||0).toLocaleString()} views · 🔥 ${Number(v.hype_count||0).toLocaleString()} Hype</div><div class="feature-row"><button data-short-details="${esc(v.id)}" aria-label="Open Short details">↗ Details</button></div>`;
+    card.querySelector('[data-short-details]').onclick=()=>openVideo(v.id,true);
+    card.querySelector('video').addEventListener('error',redirectVideoNotFound,{once:true});
+    content.prepend(card);
+  }else{
+    if(!content.classList.contains('grid')){content.className='grid';content.innerHTML='';}
+    const card=document.createElement('article');card.className='video';card.dataset.video=v.id;
+    card.innerHTML=`<div class="thumb">${v.thumbnail_url?`<img loading="lazy" src="${esc(v.thumbnail_url)}" alt="">`:'<span>No thumbnail</span>'}<span class="play">▶</span></div><h3>${esc(v.title||'Untitled video')}${v.is_private?' 🔒':''}</h3><div class="meta">${esc(v.profiles?.display_name||v.profiles?.username||'Loobee creator')}${verifiedBadge(v.profiles?.is_verified)}<br>${v.created_at?new Date(v.created_at).toLocaleDateString():''} · ${Number(v.view_count||0).toLocaleString()} views · 🔥 ${Number(v.hype_count||0).toLocaleString()}</div>`;
+    card.onclick=()=>openVideo(v.id,true);
+    content.prepend(card);
+  }
+  $('status').textContent='';
 }
 function setupLoobeeRealtime(){
   if(!db || loobeeLiveChannel)return;
-  loobeeLiveChannel=db.channel('loobee-live-updates')
-    .on('postgres_changes',{event:'*',schema:'public',table:'videos'},payload=>scheduleLiveRefresh('videos',payload))
-    .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},payload=>scheduleLiveRefresh('profiles',payload))
-    .on('postgres_changes',{event:'*',schema:'public',table:'comments'},payload=>scheduleLiveRefresh('comments',payload))
-    .on('postgres_changes',{event:'*',schema:'public',table:'video_reactions'},payload=>scheduleLiveRefresh('video_reactions',payload))
-    .on('postgres_changes',{event:'*',schema:'public',table:'subscriptions'},payload=>scheduleLiveRefresh('subscriptions',payload))
-    .on('postgres_changes',{event:'*',schema:'public',table:'account_warnings'},payload=>scheduleLiveRefresh('account_warnings',payload))
-    .on('postgres_changes',{event:'*',schema:'public',table:'video_reports'},payload=>scheduleLiveRefresh('video_reports',payload))
-    .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Loobee Realtime unavailable; silent polling will continue.',status);});
-  // Fallback: silently refresh the currently visible section every second. No visible refresh control or full page reload.
-  if(livePollTimer)clearInterval(livePollTimer);
-  livePollTimer=setInterval(()=>{
-    if(document.visibilityState!=='visible')return;
-    if(Date.now()-lastLiveRefresh<900)return;
-    refreshVisibleLoobeeView('poll');
-  },1000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && Date.now()-lastLiveRefresh>900)refreshVisibleLoobeeView('visible')});
+  loobeeLiveChannel=db.channel('loobee-new-videos-only')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'videos'},payload=>{
+      const id=payload?.new?.id;
+      if(id) addNewVideoOnly(id).catch(e=>console.warn('Could not add new Loobee video:',e));
+    })
+    .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Loobee Realtime unavailable; new videos will appear after you refresh.',status);});
 }
 setupLoobeeRealtime();
 
