@@ -397,4 +397,71 @@ function loadSettingsForm(){const p=readLoobeeSettings();$('settingsTheme').valu
 $('settingsOpen').onclick=()=>{loadSettingsForm();showModal('settingsModal')};$('saveSettingsBtn').onclick=async()=>{const p={theme:$('settingsTheme').value,reduceMotion:$('settingsReduceMotion').checked,shortsAutoplay:$('settingsShortsAutoplay').checked,quality:$('settingsQuality').value,browserAlerts:$('settingsBrowserAlerts').checked};try{localStorage.setItem('loobee_settings',JSON.stringify(p))}catch{}applyLoobeeSettings(p);if(p.browserAlerts&&'Notification'in window&&Notification.permission!=='granted'){await requestLoobeeNotifications();$('settingsStatus').textContent='Notification permission: '+Notification.permission+'.'}else if(!p.browserAlerts){$('settingsStatus').textContent='Browser alerts are not requested by Loobee. You can also revoke permission in your browser site settings.'}else $('settingsStatus').textContent='Settings saved on this browser.';showModal('settingsModal',false)};
 applyLoobeeSettings(readLoobeeSettings());if(window.matchMedia){window.matchMedia('(prefers-color-scheme: light)').addEventListener?.('change',()=>{const p=readLoobeeSettings();if(p.theme==='system')applyLoobeeSettings(p)})}
 
-</script></body></html>
+</script>
+<style>
+#deviceShareLauncher{position:fixed;right:18px;bottom:18px;z-index:8;background:linear-gradient(135deg,#9b72ff,#ff3155);border:1px solid #ffffff33;border-radius:999px;padding:13px 17px;font-weight:800;box-shadow:0 10px 35px #0007}
+.device-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}.device-info-card{background:#101018;border:1px solid #ffffff18;border-radius:12px;padding:13px;min-width:0;overflow-wrap:anywhere}.device-info-card strong{display:block;margin-bottom:6px}.device-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.device-actions button{flex:1;min-width:135px}.device-note{font-size:12px;color:#aaaab8;line-height:1.5}.device-preview{width:100%;max-height:42vh;background:#000;border-radius:12px;margin-top:12px;display:none}.device-preview.active{display:block}
+@media(max-width:600px){#deviceShareLauncher{right:10px;bottom:10px;padding:12px 14px}.device-dialog{padding:17px!important}.device-actions button{min-width:120px}}
+</style>
+<button id="deviceShareLauncher" type="button" aria-haspopup="dialog">📱 Device & Share</button>
+<div class="modal" id="deviceShareModal" role="dialog" aria-modal="true" aria-labelledby="deviceShareTitle">
+ <div class="dialog device-dialog">
+  <div class="watch-top"><h2 id="deviceShareTitle">Device detector & sharing</h2><button type="button" id="deviceShareClose">✕ Close</button></div>
+  <p class="meta">Device details are detected in this browser. Your IP and phone number are not shared unless you choose to share them.</p>
+  <div class="device-info-grid">
+   <div class="device-info-card"><strong>Device type</strong><span id="dsDevice">Detecting…</span></div>
+   <div class="device-info-card"><strong>Operating system</strong><span id="dsOS">Detecting…</span></div>
+   <div class="device-info-card"><strong>Browser</strong><span id="dsBrowser">Detecting…</span></div>
+   <div class="device-info-card"><strong>Screen size</strong><span id="dsScreen">—</span></div>
+   <div class="device-info-card"><strong>Connection</strong><span id="dsConnection">—</span></div>
+   <div class="device-info-card"><strong>Screen sharing</strong><span id="dsScreenSupport">Checking…</span></div>
+  </div>
+  <div class="profile-panel" style="margin:12px 0">
+   <h3>Share this page or your details</h3>
+   <div class="device-actions"><button type="button" id="dsSharePage">🔗 Share Loobee</button><button type="button" id="dsCopyPage">Copy page link</button><button type="button" id="dsGetIP">Show my public IP</button></div>
+   <p id="dsIPResult" class="meta" aria-live="polite">Public IP is not requested yet.</p>
+   <div class="device-actions"><button type="button" id="dsShareIP" disabled>Share public IP</button><button type="button" id="dsCopyIP" disabled>Copy public IP</button></div>
+   <label for="dsPhone">Phone number (optional — enter it yourself)</label><input id="dsPhone" type="tel" maxlength="40" autocomplete="tel" placeholder="Enter a number only if you want to share it">
+   <div class="device-actions"><button type="button" id="dsSharePhone">Share phone number</button><button type="button" id="dsCopyPhone">Copy phone number</button></div>
+   <p class="device-note">Websites cannot read your phone number from your SIM or device. Avoid posting your IP or phone number publicly; share only with people you trust.</p>
+  </div>
+  <div class="profile-panel" style="margin:12px 0">
+   <h3>Screen sharing</h3>
+   <p class="meta">On supported desktop browsers, choose a screen, window or tab in the browser's own picker. iPhone, Android and some mobile browsers may not support screen capture.</p>
+   <div class="device-actions"><button type="button" class="primary" id="dsStartScreen">🖥 Start screen preview</button><button type="button" id="dsStopScreen" disabled>Stop screen sharing</button><button type="button" id="dsShareInCall">Share in active call</button></div>
+   <video id="dsScreenPreview" class="device-preview" autoplay muted playsinline></video>
+   <p id="dsScreenStatus" class="meta" aria-live="polite">Screen sharing is off.</p>
+  </div>
+ </div>
+</div>
+<script>
+(()=>{
+ const $id=id=>document.getElementById(id);let ipValue='',displayStream=null;
+ const modal=$id('deviceShareModal');
+ function show(){modal.classList.add('open');detectDevice()}
+ function hide(){modal.classList.remove('open')}
+ function detectDevice(){
+  const ua=navigator.userAgent||'', platform=navigator.userAgentData?.platform||navigator.platform||'Unknown';
+  const mobile=navigator.userAgentData?.mobile ?? /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(ua);
+  let device=mobile?'Phone / mobile device':'Computer / desktop';if(/iPad|Tablet/i.test(ua)||(/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1))device='Tablet';
+  let os=platform;if(/Android/i.test(ua))os='Android';else if(/iPhone|iPad|iPod/i.test(ua))os='iOS / iPadOS';else if(/Win/i.test(platform)||/Windows/i.test(ua))os='Windows';else if(/Mac/i.test(platform)||/Mac OS/i.test(ua))os='macOS';else if(/Linux/i.test(platform)||/Linux/i.test(ua))os='Linux';
+  let browser='Unknown browser';if(/Edg\//i.test(ua))browser='Microsoft Edge';else if(/OPR\//i.test(ua))browser='Opera';else if(/CriOS/i.test(ua))browser='Chrome on iOS';else if(/FxiOS/i.test(ua))browser='Firefox on iOS';else if(/Firefox\//i.test(ua))browser='Firefox';else if(/Chrome\//i.test(ua)&&!/Edg\//i.test(ua))browser='Chrome';else if(/Safari\//i.test(ua)&&!/Chrome\//i.test(ua))browser='Safari';
+  $id('dsDevice').textContent=device;$id('dsOS').textContent=os;$id('dsBrowser').textContent=browser;$id('dsScreen').textContent=`${screen.width} × ${screen.height} (${window.devicePixelRatio||1}×)`;
+  const c=navigator.connection||navigator.mozConnection||navigator.webkitConnection;$id('dsConnection').textContent=c?[c.effectiveType||'Available',c.downlink?`${c.downlink} Mbps`:null].filter(Boolean).join(' · '):'Not exposed by browser';
+  $id('dsScreenSupport').textContent=navigator.mediaDevices?.getDisplayMedia?'Available in this browser (permission required)':'Not supported in this browser';
+ }
+ async function copy(text){try{await navigator.clipboard.writeText(text);return true}catch{const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch{}t.remove();return ok}}
+ async function share(title,text,url){if(navigator.share){try{await navigator.share({title,text,url});return true}catch(e){if(e.name==='AbortError')return false}}const ok=await copy([text,url].filter(Boolean).join(' '));alert(ok?'Sharing is unavailable here, so the text was copied.':'Could not copy automatically.');return ok}
+ $id('deviceShareLauncher').addEventListener('click',show);$id('deviceShareClose').addEventListener('click',hide);modal.addEventListener('click',e=>{if(e.target===modal)hide()});document.addEventListener('keydown',e=>{if(e.key==='Escape')hide()});
+ $id('dsSharePage').onclick=()=>share('Loobee','Watch and share on Loobee',location.href);$id('dsCopyPage').onclick=async()=>alert(await copy(location.href)?'Loobee link copied.':'Could not copy the link.');
+ $id('dsGetIP').onclick=async()=>{const out=$id('dsIPResult');out.textContent='Requesting your public IP from an IP lookup service…';$id('dsGetIP').disabled=true;try{const r=await fetch('https://api.ipify.org?format=json',{cache:'no-store'});if(!r.ok)throw Error('IP lookup failed');const d=await r.json();if(!d.ip)throw Error('No IP returned');ipValue=String(d.ip);out.textContent='Your public IP: '+ipValue+' (only shown here; not shared automatically).';$id('dsShareIP').disabled=false;$id('dsCopyIP').disabled=false}catch(e){out.textContent='Could not retrieve public IP. Your network or browser may block the lookup.'}finally{$id('dsGetIP').disabled=false}};
+ $id('dsCopyIP').onclick=async()=>{if(ipValue)alert(await copy(ipValue)?'Public IP copied.':'Could not copy public IP.')};$id('dsShareIP').onclick=()=>{if(ipValue)share('My public IP',ipValue,'')};
+ function phone(){return $id('dsPhone').value.trim()}$id('dsCopyPhone').onclick=async()=>{const v=phone();if(!v){alert('Enter a phone number first.');return}alert(await copy(v)?'Phone number copied.':'Could not copy phone number.')};$id('dsSharePhone').onclick=()=>{const v=phone();if(!v){alert('Enter a phone number first.');return}share('Phone number',v,'')};
+ $id('dsStartScreen').onclick=async()=>{if(!navigator.mediaDevices?.getDisplayMedia){$id('dsScreenStatus').textContent='This browser/device does not support screen capture. Try a supported desktop browser over HTTPS.';return}try{displayStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:false});const v=$id('dsScreenPreview');v.srcObject=displayStream;v.classList.add('active');$id('dsStopScreen').disabled=false;$id('dsScreenStatus').textContent='Screen is being shared in this preview on this device. It is not sent to anyone unless you share it in a call.';displayStream.getVideoTracks()[0].addEventListener('ended',stopPreview,{once:true})}catch(e){$id('dsScreenStatus').textContent=e.name==='NotAllowedError'?'Screen sharing was cancelled or permission was denied.':'Could not start screen sharing: '+e.message}};
+ function stopPreview(){if(displayStream){displayStream.getTracks().forEach(t=>t.stop());displayStream=null}$id('dsScreenPreview').srcObject=null;$id('dsScreenPreview').classList.remove('active');$id('dsStopScreen').disabled=true;$id('dsScreenStatus').textContent='Screen sharing is off.'}$id('dsStopScreen').onclick=stopPreview;
+ $id('dsShareInCall').onclick=()=>{if(typeof rtc!=='undefined'&&rtc){if(typeof startScreenShare==='function')startScreenShare();else $id('dsScreenStatus').textContent='Call screen-share controls are unavailable.'}else{$id('dsScreenStatus').textContent='Start a Loobee video call first, then use Share in active call. For a local preview, use Start screen preview.'}};
+ detectDevice();
+})();
+</script>
+
+</body></html>
