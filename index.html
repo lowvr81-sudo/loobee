@@ -89,6 +89,39 @@ input,textarea,select{background:#101018;border-color:#333345;transition:border-
 @media(max-width:520px){#watchView .player-box{border-radius:12px}#watchView .watch-row{align-items:flex-start}#watchView .header-actions{width:100%}#watchView .header-actions button{flex:1;padding:9px 8px;font-size:13px}#watchView .feature-row{gap:7px}#watchView .feature-row>button{font-size:12px;padding:8px 10px}#watchView .feature-row .quality-control{width:100%;justify-content:space-between}#watchView .feature-row select{max-width:65%}#watchView .description{padding:15px}#watchView .comment-form{align-items:stretch;flex-direction:column}#watchView .comment-form button{align-self:flex-end}#watchView .recommendations{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){#watchView *{scroll-behavior:auto!important;transition:none!important}}
 
+
+/* Integrated video-card CSS */
+/* Loobee video-card redesign — selectors match the current Loobee HTML. */
+:root{--lb-card:#15141e;--lb-border:rgba(196,181,253,.17);--lb-purple:#a78bfa;--lb-pink:#ff477e;--lb-muted:#aaa5bb}
+#content.grid,#profileVideos.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,255px),1fr));gap:30px 22px;align-items:start}
+#content.grid .video,#profileVideos.grid .video{position:relative;min-width:0;padding:0 0 4px;border-radius:17px;cursor:pointer;transition:transform .22s ease,filter .22s ease}
+#content.grid .video:hover,#profileVideos.grid .video:hover{transform:translateY(-5px);filter:drop-shadow(0 12px 22px rgba(0,0,0,.28))}
+#content.grid .thumb,#profileVideos.grid .thumb{position:relative;display:grid;place-items:center;width:100%;height:auto;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--lb-border);border-radius:17px;background:linear-gradient(135deg,#25213a,#17151e 55%,#311a2b);box-shadow:0 7px 24px #0003;isolation:isolate;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
+#content.grid .video:hover .thumb,#profileVideos.grid .video:hover .thumb{border-color:#a78bfa99;box-shadow:0 10px 32px #8b5cf626,0 0 0 1px #a78bfa22}
+#content.grid .thumb img,#content.grid .thumb video,#profileVideos.grid .thumb img,#profileVideos.grid .thumb video{display:block;width:100%;height:100%;object-fit:cover;transition:transform .45s cubic-bezier(.2,.7,.2,1),filter .3s ease}
+#content.grid .video:hover .thumb img,#content.grid .video:hover .thumb video,#profileVideos.grid .video:hover .thumb img,#profileVideos.grid .video:hover .thumb video{transform:scale(1.055);filter:saturate(1.08) brightness(.83)}
+#content.grid .thumb:after,#profileVideos.grid .thumb:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(7,6,12,.35));z-index:1;pointer-events:none}
+#content.grid .thumb>span:not(.play),#profileVideos.grid .thumb>span:not(.play){color:#d7c9ff;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+#content.grid .thumb .play,#profileVideos.grid .thumb .play{z-index:2;display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid #ffffff77;border-radius:50%;background:rgba(15,12,23,.72);color:#fff;font-size:17px;box-shadow:0 5px 22px #0007;backdrop-filter:blur(9px);opacity:.92;transition:transform .2s ease,background .2s ease,opacity .2s ease}
+#content.grid .video:hover .play,#profileVideos.grid .video:hover .play{transform:scale(1.12);background:linear-gradient(135deg,var(--lb-purple),var(--lb-pink));opacity:1}
+#content.grid .video h3,#profileVideos.grid .video h3{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:12px 2px 5px;color:#f7f4ff;font-size:15px;font-weight:750;line-height:1.42;letter-spacing:-.012em;overflow-wrap:anywhere}
+#content.grid .video .meta,#profileVideos.grid .video .meta{margin:0 2px;color:var(--lb-muted);font-size:12.5px;line-height:1.65}
+#content.grid .video .verified-badge,#profileVideos.grid .video .verified-badge{box-shadow:0 0 12px #3196ff2a}
+#recommendations.recommendations{display:flex;flex-direction:column;gap:13px}
+#recommendations .recommendation{display:grid;grid-template-columns:minmax(125px,44%) minmax(0,1fr);align-items:start;gap:12px;margin:0;padding:8px;border:1px solid transparent;border-radius:15px;background:rgba(255,255,255,.025);transition:background .2s ease,border-color .2s ease,transform .2s ease}
+#recommendations .recommendation:hover{transform:translateY(-2px);background:rgba(167,139,250,.09);border-color:var(--lb-border)}
+#recommendations .recommendation .thumb{height:auto;aspect-ratio:16/9;border:1px solid var(--lb-border);border-radius:11px;background:linear-gradient(135deg,#25213a,#17151e)}
+#recommendations .recommendation .thumb img{display:block;width:100%;height:100%;object-fit:cover}
+#recommendations .recommendation .play{width:32px;height:32px;padding:0;display:grid;place-items:center;border-radius:50%;font-size:12px;background:#09070bbd;color:#fff}
+#recommendations .recommendation h3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 7px;color:#f7f4ff;font-size:13px;font-weight:750;line-height:1.4}
+#recommendations .recommendation .meta{font-size:11.5px;line-height:1.55;color:var(--lb-muted)}
+#profileVideos{margin-top:18px}
+.video:focus-visible{outline:2px solid var(--lb-purple);outline-offset:4px}
+@media(max-width:1050px){#content.grid,#profileVideos.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:24px 17px}#recommendations.recommendations{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}}
+@media(max-width:720px){#content.grid,#profileVideos.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}#content.grid .thumb,#profileVideos.grid .thumb{border-radius:13px}#content.grid .video h3,#profileVideos.grid .video h3{font-size:13.5px;margin-top:9px}#content.grid .video .meta,#profileVideos.grid .video .meta{font-size:11.5px}#recommendations .recommendation{grid-template-columns:minmax(110px,42%) minmax(0,1fr);gap:10px}}
+@media(max-width:390px){#content.grid,#profileVideos.grid{grid-template-columns:minmax(0,1fr)}#content.grid .video h3,#profileVideos.grid .video h3{font-size:15px}}
+@media(prefers-reduced-motion:reduce){#content.grid .video,#content.grid .thumb img,#content.grid .video .play,#profileVideos.grid .video,#profileVideos.grid .thumb img,#recommendations .recommendation{transition:none!important}}
+
 </style></head>
 <body>
 <div id="loobeeIntro" aria-label="Welcome to Loobee"><div class="intro-inner"><div class="intro-mark">L</div><div class="intro-title"><span>Loobee</span></div><div class="intro-sub">Watch something wonderful</div><div class="intro-loader"></div></div></div>
