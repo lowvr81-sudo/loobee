@@ -1,0 +1,30 @@
+/* Loobee Watch Page redesign. Paste at the END of your existing <style> block. */
+:root{--lb-accent:#a78bfa;--lb-purple:#7c3aed;--lb-panel:#17151f;--lb-border:rgba(196,181,253,.18);--lb-muted:#aaa5b8}
+body{background:#0c0b11}
+#watchPage,.watch-page,.watch-layout,.video-watch,.watch-container{color:#f7f5ff;max-width:1680px;margin-inline:auto}
+#watchPage .watch-grid,.watch-page .watch-grid,.watch-layout,.watch-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,340px);gap:26px;align-items:start}
+#watchPage video,.watch-page video,.watch-player video,#videoPlayer,video#player{display:block;width:100%;max-height:min(72vh,820px);aspect-ratio:16/9;object-fit:contain;background:#050408;border-radius:18px;box-shadow:0 18px 70px #0006,0 0 0 1px var(--lb-border)}
+#watchPage .player,.watch-page .player,.watch-player,.video-player,.player-wrap{overflow:hidden;background:#050408;border:1px solid var(--lb-border);border-radius:20px;box-shadow:0 18px 55px #0005}
+#watchPage h1,.watch-page h1,.watch-title,#videoTitle{color:#fff;font-size:clamp(1.35rem,2.2vw,2rem);font-weight:800;letter-spacing:-.035em;line-height:1.2;margin:20px 0 12px}
+#watchPage button,.watch-page button,.watch-actions button,.video-actions button{transition:transform .16s ease,background .16s ease,border-color .16s ease}
+#watchPage button:hover,.watch-page button:hover,.watch-actions button:hover,.video-actions button:hover{transform:translateY(-1px)}
+#watchPage .watch-actions,.watch-page .watch-actions,.watch-actions,.video-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+#watchPage .watch-actions button,.watch-page .watch-actions button,.watch-actions button,.video-actions button{min-height:40px;padding:9px 14px;color:#f4f0ff;background:#201c2c;border:1px solid var(--lb-border);border-radius:999px;font-weight:650}
+#watchPage .watch-actions button:hover,.watch-page .watch-actions button:hover,.watch-actions button:hover,.video-actions button:hover{background:#302544;border-color:#a78bfa88}
+#watchPage .channel-row,.watch-page .channel-row,.channel-info,.creator-row,.video-channel{display:flex;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid #ffffff14}
+#watchPage .subscribe,.watch-page .subscribe,button.subscribe,.subscribe-btn{background:linear-gradient(135deg,var(--lb-purple),#6d28d9);color:white;border:0;border-radius:999px;padding:11px 18px;font-weight:800}
+#watchPage .description,.watch-page .description,.video-description,#videoDescription{padding:16px 18px;margin:14px 0 20px;color:#e9e4f4;background:linear-gradient(145deg,#a78bfa17,#ffffff06);border:1px solid var(--lb-border);border-radius:16px;line-height:1.65}
+#watchPage input,#watchPage textarea,.watch-page input,.watch-page textarea,#commentsSection input,#commentsSection textarea{color:#f7f5ff;background:#17151f;border:1px solid var(--lb-border);border-radius:12px}
+#watchPage input:focus,#watchPage textarea:focus,.watch-page input:focus,.watch-page textarea:focus{outline:2px solid #a78bfa88;outline-offset:1px}
+#watchPage .recommendations,.watch-page .recommendations,.recommended-videos,#recommendations{display:flex;flex-direction:column;gap:13px}
+#watchPage .recommendations .video-card,.watch-page .recommendations .video-card,.recommended-videos .video-card,#recommendations .video-card{display:grid;grid-template-columns:minmax(110px,44%) minmax(0,1fr);gap:12px;padding:9px;background:#ffffff06;border:1px solid transparent;border-radius:14px;transition:background .16s ease,border-color .16s ease}
+#watchPage .recommendations .video-card:hover,.watch-page .recommendations .video-card:hover,.recommended-videos .video-card:hover,#recommendations .video-card:hover{background:#a78bfa14;border-color:var(--lb-border)}
+#watchPage .recommendations img,.watch-page .recommendations img,.recommended-videos img,#recommendations img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px}
+#watchPage .recommendations h3,.watch-page .recommendations h3,.recommended-videos h3,#recommendations h3{margin:2px 0 6px;color:#f8f6ff;font-size:.92rem;line-height:1.35}
+#watchPage .recommendations p,.watch-page .recommendations p,.recommended-videos p,#recommendations p{margin:0;color:var(--lb-muted);font-size:.8rem;line-height:1.4}
+#watchPage .comments,.watch-page .comments,#commentsSection,.comments-section{margin-top:28px}
+#watchPage .comments h2,.watch-page .comments h2,#commentsSection h2,.comments-section h2{font-size:1.25rem;letter-spacing:-.02em}
+#watchPage .comment,.watch-page .comment,.comment-item{padding:14px 0;border-bottom:1px solid #ffffff12}
+@media(max-width:980px){#watchPage .watch-grid,.watch-page .watch-grid,.watch-layout,.watch-content{grid-template-columns:minmax(0,1fr)}#watchPage .recommendations,.watch-page .recommendations,.recommended-videos,#recommendations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#watchPage video,.watch-page video,.watch-player video,#videoPlayer,video#player{border-radius:10px}#watchPage .player,.watch-page .player,.watch-player,.video-player,.player-wrap{border-radius:12px}#watchPage .recommendations,.watch-page .recommendations,.recommended-videos,#recommendations{grid-template-columns:minmax(0,1fr)}#watchPage .watch-actions button,.watch-page .watch-actions button,.watch-actions button,.video-actions button{min-height:38px;padding:8px 11px}}
+@media(prefers-reduced-motion:reduce){#watchPage *,.watch-page *,.watch-actions *,.video-actions *{transition:none!important}}
