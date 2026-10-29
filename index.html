@@ -175,7 +175,7 @@ input,textarea,select{background:#101018;border-color:#333345;transition:border-
 <script>
 const SUPABASE_URL="https://npnxfvqnjdvqgyecoxdu.supabase.co";
 const SUPABASE_KEY="sb_publishable_jH73fmYtkQ1Vkz2BsrK4Wg_SSZFvcjB";
-// Set this to your deployed video-processor URL, for example https://your-service.example.com/process-video.
+// Set this to your deployed async worker base URL, for example https://your-worker.example.com (no /process-video suffix).
 const VIDEO_PROCESSOR_URL="";
 const db=window.supabase?.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);let user=null,page="home",category="All",searchTerm="",videos=[],currentVideo=null,commentsEnabled=true,viewedProfileId=null,profileReturnView="browse";
@@ -262,7 +262,47 @@ async function ensureProfile(){if(!user||!db)return;let pending=null;try{pending
 async function ensureLowVRSubscription(){if(!user||!db)return;const{data:creator,error}=await db.from('profiles').select('id').ilike('username','LowVR').limit(1).maybeSingle();if(error||!creator||creator.id===user.id)return;await db.from('subscriptions').upsert({subscriber_id:user.id,channel_id:creator.id},{onConflict:'subscriber_id,channel_id',ignoreDuplicates:true})}
 $('shareBtn').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);$('watchNotice').textContent='Video link copied!'}catch{$('watchNotice').textContent='Copy the video link from your address bar.'}};
 async function makeVideoThumbnail(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),video=document.createElement('video');video.preload='metadata';video.muted=true;video.playsInline=true;let finished=false;const cleanup=()=>{URL.revokeObjectURL(url);video.removeAttribute('src');video.load()};const fail=()=>{if(finished)return;finished=true;cleanup();reject(new Error('Could not create a thumbnail from this video. Try uploading a JPG/PNG thumbnail instead.'))};video.onerror=fail;video.onloadedmetadata=()=>{try{const target=Number.isFinite(video.duration)&&video.duration>0?Math.min(1,video.duration/2):0;video.currentTime=target}catch{fail()}};video.onseeked=()=>{if(finished)return;try{const width=video.videoWidth,height=video.videoHeight;if(!width||!height)throw new Error('Video has no readable frame.');const max=640,scale=Math.min(1,max/Math.max(width,height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas is unavailable.');ctx.drawImage(video,0,0,canvas.width,canvas.height);canvas.toBlob(blob=>{if(finished)return;finished=true;cleanup();if(blob)resolve(new File([blob],'video-thumbnail.jpg',{type:'image/jpeg'}));else reject(new Error('Could not encode the video thumbnail.'))},'image/jpeg',0.82)}catch{fail()}};video.src=url;video.load()})}
-$('uploadForm').onsubmit=async e=>{e.preventDefault();if(!db||!user){msg('uploadMessage','Sign in before uploading.',true);return}const file=$('videoFile').files[0],thumb=$('thumbnailFile').files[0];if(!file||!file.type.startsWith('video/'))return msg('uploadMessage','Choose a valid video file.',true);if($('uploadPrivate').checked)return msg('uploadMessage','Private upload is disabled here until the Storage bucket is made private and signed URLs are implemented. Upload publicly for now, or configure secure private Storage first.',true);try{await checkContentWithAI('video',`Title: ${$('videoTitle').value.trim()}\nDescription: ${$('videoDescription').value.trim()}`)}catch(modErr){msg('uploadMessage',modErr.message,true);await refreshModerationState();return}if(!VIDEO_PROCESSOR_URL||!/^https:\/\//i.test(VIDEO_PROCESSOR_URL))return msg('uploadMessage','AI video processing is not connected yet. The processor must be deployed and configured before uploads can be processed.',true);if(file.size>500*1024*1024)return msg('uploadMessage','This upload is over 500 MB. Loobee’s current browser-to-processor workflow is not designed for very large files. 100 GB uploads are disabled until a server-side streaming processing pipeline is deployed and tested.',true);let uploadFile=file;msg('uploadMessage','AI scanning video frames and cutting unsafe sections… This may take a while.');try{const{data:sessionData}=await db.auth.getSession();const token=sessionData?.session?.access_token;if(!token)throw new Error('Your sign-in session expired. Sign in again.');const fd=new FormData();fd.append('video',file,file.name);const processed=await fetch(VIDEO_PROCESSOR_URL,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd});if(!processed.ok){let info={};try{info=await processed.json()}catch{}throw new Error(info.error||`AI video processing failed (${processed.status}).`)}const cleanedBlob=await processed.blob();const removed=Number(processed.headers.get('X-Loobee-Removed-Segments')||0);uploadFile=new File([cleanedBlob],file.name.replace(/\.[^.]+$/,'')+'-loobee-cleaned.mp4',{type:'video/mp4'});msg('uploadMessage',removed?`Removed ${removed} unsafe section(s). Uploading cleaned video…`:'No unsafe sections detected. Uploading scanned video…');const safe=uploadFile.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=`${user.id}/${crypto.randomUUID()}-${safe}`;await uploadWithResume('videos',path,uploadFile,'video/mp4',(sent,total)=>{const pct=total?Math.floor(sent/total*100):0;msg('uploadMessage',`Uploading cleaned video… ${pct}% (${(sent/1024/1024).toFixed(1)} / ${(total/1024/1024).toFixed(1)} MB). You can keep this page open while it uploads.`)});const videoUrl=db.storage.from('videos').getPublicUrl(path).data.publicUrl;let thumbnailUrl=null;let thumbnailToUpload=thumb||null;if(!thumbnailToUpload){msg('uploadMessage','Creating a thumbnail from the cleaned video…');thumbnailToUpload=await makeVideoThumbnail(uploadFile)}if(thumbnailToUpload){if(thumbnailToUpload.size>5*1024*1024)throw new Error('Thumbnail must be under 5 MB.');const thumbName=thumb?thumb.name:'video-thumbnail.jpg';const tp=`${user.id}/${crypto.randomUUID()}-${thumbName.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const tu=await db.storage.from('thumbnails').upload(tp,thumbnailToUpload,{upsert:false,contentType:thumbnailToUpload.type||'image/jpeg'});if(tu.error)throw tu.error;thumbnailUrl=db.storage.from('thumbnails').getPublicUrl(tp).data.publicUrl}const{error}=await db.from('videos').insert({user_id:user.id,title:$('videoTitle').value.trim(),description:$('videoDescription').value.trim(),category:$('videoCategory').value,video_url:videoUrl,thumbnail_url:thumbnailUrl,is_private:false,comments_enabled:true,is_short:$('uploadShort').checked});if(error)throw error;msg('uploadMessage','Video uploaded successfully!');$('uploadForm').reset();showModal('uploadModal',false);page='home';showBrowse();await loadData()}catch(err){msg('uploadMessage','Upload failed: '+(err.message||'Unknown error'),true)}};
+$('uploadForm').onsubmit=async e=>{
+ e.preventDefault();
+ if(!db||!user){msg('uploadMessage','Sign in before uploading.',true);return}
+ const file=$('videoFile').files[0],thumb=$('thumbnailFile').files[0];
+ if(!file||!file.type.startsWith('video/'))return msg('uploadMessage','Choose a valid video file.',true);
+ if($('uploadPrivate').checked)return msg('uploadMessage','Private publishing is not enabled yet. Do not select private upload.',true);
+ if(thumb&&thumb.size>5*1024*1024)return msg('uploadMessage','Thumbnail must be under 5 MB.',true);
+ try{await checkContentWithAI('video',`Title: ${$('videoTitle').value.trim()}\nDescription: ${$('videoDescription').value.trim()}`)}
+ catch(modErr){msg('uploadMessage',modErr.message,true);await refreshModerationState();return}
+ if(!window.tus?.Upload)return msg('uploadMessage','Resumable upload library did not load. Refresh the page and try again.',true);
+ try{
+  const title=$('videoTitle').value.trim(),description=$('videoDescription').value.trim(),category=$('videoCategory').value,isShort=$('uploadShort').checked;
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const sourcePath=`${user.id}/${crypto.randomUUID()}-${safe}`;
+  msg('uploadMessage','Uploading original video directly to private staging storage. This is resumable; keep this page open until the upload completes.');
+  await uploadWithResume('video-staging',sourcePath,file,file.type||'application/octet-stream',(sent,total)=>{
+   const pct=total?Math.floor(sent/total*100):0;
+   msg('uploadMessage',`Uploading to private staging storage… ${pct}% (${(sent/1024/1024).toFixed(1)} / ${(total/1024/1024).toFixed(1)} MB).`);
+  });
+  let thumbnailPath=null;
+  if(thumb){thumbnailPath=`${user.id}/${crypto.randomUUID()}-${thumb.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const thumbResult=await db.storage.from('thumbnails').upload(thumbnailPath,thumb,{upsert:false,contentType:thumb.type||'image/jpeg'});if(thumbResult.error)throw thumbResult.error;}
+  const {data:job,error:jobError}=await db.from('video_processing_jobs').insert({
+   user_id:user.id,source_path:sourcePath,thumbnail_path:thumbnailPath,title,description,category,is_short:isShort,status:'queued',progress:0
+  }).select('id').single();
+  if(jobError)throw new Error(`Video uploaded, but the processing job could not be queued: ${jobError.message}. Check the Loobee SQL migration and RLS policies.`);
+  msg('uploadMessage','Upload complete. AI safety processing is queued on the server; you can leave this page open while it runs.');
+  const started=Date.now();
+  while(Date.now()-started<12*60*60*1000){
+   await new Promise(resolve=>setTimeout(resolve,5000));
+   const {data:state,error:stateError}=await db.from('video_processing_jobs').select('status,progress,error_message').eq('id',job.id).eq('user_id',user.id).single();
+   if(stateError)throw new Error(`Could not check processing status: ${stateError.message}`);
+   if(state.status==='failed')throw new Error(state.error_message||'Server-side video processing failed.');
+   if(state.status==='completed'){
+    msg('uploadMessage','Video processed and published successfully.');
+    $('uploadForm').reset();showModal('uploadModal',false);page='home';showBrowse();await loadData();return;
+   }
+   msg('uploadMessage',`${state.status==='queued'?'Waiting in processing queue':'AI scanning and processing on the server'}… ${Number(state.progress||0)}%. You can keep this page open; the worker continues if you close it.`);
+  }
+  msg('uploadMessage','Your video job is still running. It remains queued/processing on the server; reopen Loobee later to check its status.');
+ }catch(err){msg('uploadMessage','Upload/processing failed: '+(err.message||'Unknown error'),true)}
+};
 let pendingTotpFactorId=null;let pendingTotpChallengeId=null;let mfaChallengeInProgress=false;
 function securityMessage(text,isError=false){const el=$('securityMessage');el.textContent=text;el.className=isError?'error':'success'}
 async function refreshMfaSettings(){if(!db||!user)return;securityMessage('');$('securityStatus').textContent='Checking your security settings…';$('totpEnrollArea').classList.add('hidden');$('totpEnabledArea').classList.add('hidden');const{data,error}=await db.auth.mfa.listFactors();if(error){$('securityStatus').textContent='Could not check 2FA status: '+error.message;return}const verified=(data?.totp||[]).find(f=>f.status==='verified');if(verified){pendingTotpFactorId=verified.id;$('securityStatus').textContent='Authenticator two-factor authentication is enabled for this account.';$('totpEnabledArea').classList.remove('hidden')}else{$('securityStatus').textContent='Two-factor authentication is not enabled yet.';$('totpEnrollArea').classList.add('hidden');$('totpEnabledArea').classList.add('hidden')}}
@@ -447,7 +487,7 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
   try{
    // Do not rely on listBuckets(): many Supabase projects intentionally hide the bucket catalogue from anon clients.
    // Probe each required bucket directly. An empty bucket is still a successful response.
-   const required=['videos','thumbnails','profile-media'];
+   const required=['videos','thumbnails','profile-media','video-staging'];
    const checks=await Promise.all(required.map(async name=>{
     try{const {error}=await db.storage.from(name).list('',{limit:1});return {name,error:error||null};}
     catch(error){return {name,error};}
@@ -460,10 +500,10 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
   }catch(e){rows.push(row('Storage bucket access','FAIL',e?.message||'Request failed.'))}
   // Check a real processor health endpoint, not just whether a URL string exists.
   if(!VIDEO_PROCESSOR_URL||!/^https:\/\//i.test(VIDEO_PROCESSOR_URL)){
-   rows.push(row('AI video processor URL','FAIL','VIDEO_PROCESSOR_URL is empty or not HTTPS. Deploy a processor, then set this constant to its /process-video endpoint. A static HTML page cannot deploy the backend for you.'));
+   rows.push(row('AI video processor URL','FAIL','VIDEO_PROCESSOR_URL is empty or not HTTPS. Deploy the async worker, then set this constant to its HTTPS base URL. A static HTML page cannot deploy the backend for you.'));
   } else {
    try {
-    const healthUrl=VIDEO_PROCESSOR_URL.replace(/\/process-video\/?$/i,'/health').replace(/\/$/,'/health');
+    const healthUrl=VIDEO_PROCESSOR_URL.replace(/\/$/,'')+'/health';
     const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);let res;
     try{res=await fetch(healthUrl,{method:'GET',signal:controller.signal,mode:'cors',cache:'no-store'});}finally{clearTimeout(timer)}
     let health={};try{health=await res.json()}catch{}
@@ -480,7 +520,7 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
     rows.push(row(`Edge Function gateway: ${fn} (safe OPTIONS)`,res.ok?'PASS':res.status===404?'FAIL':'WARN',`HTTP ${res.status}. This only checks gateway/preflight, not function logic. ${res.status===404?`The ${fn} function may not be deployed under this name.`:''}`));
    }catch(e){rows.push(row(`Edge Function gateway: ${fn} (safe OPTIONS)`,'WARN',`${e?.name==='AbortError'?'Timed out':e?.message||'Browser request failed'}. Browser CORS/network restrictions can affect this check; inspect Supabase → Edge Functions → Logs.`))}
   }
-  rows.push(row('100 GB upload support','FAIL','NOT SUPPORTED/VERIFIED. This page still sends a complete video to a synchronous processor and reads the processed result into browser memory, and the current upload flow caps files at 500 MB. 100 GB needs resumable direct-to-storage upload plus an asynchronous server-side job/worker and verified plan, quota, disk, time, and end-to-end limits. Keep this disabled until a full-size test succeeds.'));
+  rows.push(row('100 GB upload support','WARN','The page now uses resumable direct-to-private-storage uploads and an asynchronous processing queue, so it no longer buffers the full processed video in browser memory. This is NOT verified for 100 GB until the private staging bucket accepts that size, the worker host has enough temporary disk/time, the Supabase plan permits it, and a real end-to-end 100 GB test succeeds.')); 
   results.innerHTML=rows.join('');time.textContent='Checked '+new Date().toLocaleTimeString();
  }
 })();
