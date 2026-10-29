@@ -1,343 +1,474 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Loobee Database Check & Fix</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loobee — Watch, Upload, Share</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1020;--panel:#141c30;--line:#293650;--text:#edf2ff;--muted:#9baac5;--accent:#8b7cff;--good:#53d69a;--bad:#ff737d}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,Arial,sans-serif}
-main{max-width:960px;margin:auto;padding:24px}
-header{padding:24px 0}
-h1{margin:0;font-size:clamp(26px,5vw,38px)}
-h2{font-size:19px;margin-top:0}
-p,.muted{color:var(--muted)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;margin:16px 0}
-label{display:block;margin:12px 0 5px}
-input,textarea{width:100%;background:#090f1e;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:11px;font:inherit}
-button{background:var(--accent);color:white;border:0;border-radius:8px;padding:10px 14px;font-weight:650;cursor:pointer;margin:8px 6px 0 0}
-button.secondary{background:#283650}
-button:disabled{opacity:.5;cursor:not-allowed}
-.status{padding:12px;border-radius:8px;background:#090f1e;margin-top:12px;overflow-wrap:anywhere}
-.good{color:var(--good)}.bad{color:var(--bad)}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
-pre{white-space:pre-wrap;overflow-wrap:anywhere}
-small{color:var(--muted)}
-</style>
-</head>
+
+:root{color-scheme:dark;--bg:#0f0f12;--panel:#19191f;--line:#303039;--text:#f6f6fa;--muted:#aaaab8;--red:#f32642;--purple:#8b5cf6}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px Arial,sans-serif}button,input,textarea,select{font:inherit}button{cursor:pointer;border:0;border-radius:9px;padding:10px 15px;background:#292932;color:white}button:hover{filter:brightness(1.16)}button:disabled{opacity:.55;cursor:not-allowed}.primary{background:var(--red);font-weight:bold}header{min-height:68px;display:flex;align-items:center;gap:16px;padding:10px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#101014f5;z-index:5}.logo{display:flex;align-items:center;gap:9px;font-size:24px;font-weight:800;letter-spacing:-1px;white-space:nowrap;cursor:pointer}.logo-mark{background:var(--red);width:38px;height:27px;border-radius:8px;display:grid;place-items:center;color:white;font-size:18px;font-weight:900;letter-spacing:0}.search{display:flex;max-width:650px;margin:auto;width:100%;gap:8px}input,textarea{background:#111116;border:1px solid #393943;color:white;border-radius:9px;padding:12px;width:100%;outline:none}input:focus,textarea:focus{border-color:var(--purple)}.header-actions{display:flex;gap:8px;white-space:nowrap}.layout{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 68px)}aside.sidebar{padding:20px 12px;border-right:1px solid var(--line)}.nav{display:block;width:100%;text-align:left;background:transparent;margin:4px 0}.nav.active,.nav:hover{background:#282832}main{padding:25px;min-width:0}h1{font-size:26px;margin:0 0 8px}.sub{color:var(--muted);margin:0 0 24px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}.chip{border:1px solid var(--line);background:#1b1b22}.chip.active{background:#eee;color:#111}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:24px 17px}.video{min-width:0;cursor:pointer}.thumb{height:145px;background:#202027;border:1px solid var(--line);border-radius:13px;overflow:hidden;display:grid;place-items:center;color:#777;position:relative}.thumb video,.thumb img{width:100%;height:100%;object-fit:cover}.play{position:absolute;background:#0009;border-radius:8px;padding:7px 12px}.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:5px;border-radius:50%;background:#3196ff;color:white;font-size:12px;font-weight:900;vertical-align:middle}.video h3{font-size:15px;line-height:1.35;margin:10px 0 5px;overflow-wrap:anywhere}.meta{color:var(--muted);font-size:13px;line-height:1.6}.channel-card{padding:17px;background:var(--panel);border:1px solid var(--line);border-radius:13px}.avatar{display:grid;place-items:center;background:var(--purple);width:48px;height:48px;border-radius:50%;font-weight:bold;font-size:20px;flex-shrink:0}.empty{padding:48px 15px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}.error{color:#ff8e9d;background:#3b1820;padding:12px;border-radius:9px;margin:12px 0;white-space:pre-wrap}.success{color:#a9f0bf}.modal{position:fixed;inset:0;background:#000c;z-index:10;display:none;align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.dialog{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:min(650px,100%);max-height:90vh;overflow:auto;padding:23px}.dialog h2{margin-top:0}.form-row{display:flex;gap:10px;margin:12px 0}.form-row>*{flex:1;min-width:0}label{display:block;margin:13px 0 6px;color:#ddd}a{color:#c4b5fd}.hidden{display:none!important}.watch-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;max-width:1650px;margin:24px auto;padding:0 24px}.player-box{width:100%;aspect-ratio:16/9;background:#000;border-radius:13px;overflow:hidden}.watch-player{width:100%;height:100%;object-fit:contain;background:#000}.watch-title{font-size:23px;line-height:1.35;margin:15px 0}.watch-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.channel-line{display:flex;align-items:center;gap:12px}.pill{border-radius:22px}.description{white-space:pre-wrap;overflow-wrap:anywhere;background:#202027;border-radius:12px;padding:15px;margin-top:18px}.recommendation{display:grid;grid-template-columns:155px minmax(0,1fr);gap:10px;margin-bottom:14px;cursor:pointer}.recommendation .thumb{height:auto;aspect-ratio:16/9}.recommendation h3{font-size:14px;margin:3px 0 7px;line-height:1.35}.comments{margin-top:26px}.comment-form{display:flex;gap:9px;margin:15px 0}.comment-form input{min-width:0}.comment{padding:13px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.comment p{white-space:pre-wrap}.comment small{color:var(--muted)}.watch-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.creator-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.setting{display:flex;gap:8px;align-items:center;margin:10px 0}.setting input{width:auto}.toast{color:#ffb5be;margin:10px 0;white-space:pre-wrap}
+
+.profile-view{max-width:1100px;margin:28px auto;padding:0 24px}.profile-hero{background:linear-gradient(135deg,#29213f,#19191f 65%);border:1px solid var(--line);border-radius:20px;padding:28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:24px}.profile-avatar{width:92px;height:92px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#f32642);display:grid;place-items:center;font-size:36px;font-weight:800;flex-shrink:0}.profile-about{color:#ddd;white-space:pre-wrap;overflow-wrap:anywhere}.profile-about a{color:#c4b5fd;text-decoration:underline}.profile-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px;margin:18px 0}.profile-link{display:inline-flex;align-items:center;gap:8px}.comment-user{cursor:pointer;color:#f6f6fa;font-weight:bold;background:none;padding:0;margin-right:8px}.comment-user:hover{text-decoration:underline}.profile-button{display:flex;align-items:center;gap:8px}.profile-button .avatar{width:30px;height:30px;font-size:13px;margin:0}.security-note{padding:12px;border-radius:10px;background:#24242c;color:#d9d9e4;margin:12px 0}.totp-qr{max-width:220px;width:100%;background:white;padding:10px;border-radius:10px;display:block;margin:12px auto}.security-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:1000px){.watch-layout{grid-template-columns:1fr}.recommendations{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}}@media(max-width:720px){header{padding:10px;gap:9px;flex-wrap:wrap}.logo{font-size:20px}.logo-mark{width:32px}.search{order:3;max-width:none}.header-actions{margin-left:auto}.layout{grid-template-columns:1fr}aside.sidebar{border-right:0;border-bottom:1px solid var(--line);display:flex;gap:4px;padding:8px;overflow:auto}.nav{width:auto;white-space:nowrap;margin:0}main{padding:17px}.grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:18px 12px}.thumb{height:110px}.watch-layout{padding:0 12px;margin-top:12px}.watch-title{font-size:19px}.recommendation{grid-template-columns:140px minmax(0,1fr)}}
+.shorts-feed{max-width:620px;margin:20px auto;display:grid;gap:20px}.short-card{background:#19191f;border:1px solid #303039;border-radius:16px;padding:14px}.short-card video{width:100%;max-height:72vh;aspect-ratio:9/16;object-fit:contain;background:#000;border-radius:12px}.feature-row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.quality-control{display:flex;align-items:center;gap:8px;margin:0;color:var(--muted)}.quality-control select{width:auto;max-width:230px;background:#171720;color:#fff;border:1px solid var(--line);border-radius:9px;padding:8px}.feature-row button{padding:9px 12px}.warning-card{padding:12px;border:1px solid #75424b;background:#301a20;border-radius:10px;margin:8px 0}.video-badge{position:absolute;left:8px;top:8px;background:#8b5cf6;color:#fff;border-radius:6px;padding:4px 7px;font-size:11px;font-weight:bold}.short-thumb{aspect-ratio:9/16!important;height:210px!important}.danger{background:#8e2334}.hype-button{background:#6d28d9}.feature-note{color:#c4b5fd;font-size:13px;margin:8px 0}
+@media(max-width:720px){.shorts-feed{padding:0 10px}.short-card video{max-height:65vh}}
+
+/* Loobee visual refresh */
+:root{--bg:#0b0b10;--panel:#15151e;--line:#2b2b3a;--text:#f7f7fb;--muted:#a5a5b8;--red:#ff3155;--purple:#9b72ff;--glow:rgba(155,114,255,.22)}
+body{background:radial-gradient(ellipse at 15% -10%,#30204a 0,transparent 38%),radial-gradient(ellipse at 95% 0%,#401725 0,transparent 30%),var(--bg);background-attachment:fixed;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;letter-spacing:.05px}
+header{backdrop-filter:blur(18px);background:#0c0c12d9;border-bottom:1px solid #ffffff12;box-shadow:0 8px 28px #0002}
+.logo-mark{width:40px;height:32px;border-radius:11px;box-shadow:0 0 25px #ff315544;animation:logoPulse 3s ease-in-out infinite}
+button{transition:transform .18s ease,background .18s ease,box-shadow .18s ease,border-color .18s ease}button:hover{transform:translateY(-1px);box-shadow:0 8px 24px #0004}button:active{transform:scale(.98)}
+.primary{background:linear-gradient(135deg,#ff3155,#e91e63);box-shadow:0 5px 18px #ff31552a}
+input,textarea,select{background:#101018;border-color:#333345;transition:border-color .2s,box-shadow .2s}input:focus,textarea:focus,select:focus{border-color:var(--purple);box-shadow:0 0 0 3px #9b72ff24}
+.nav{border-radius:12px;padding:12px 14px}.nav.active,.nav:hover{background:linear-gradient(100deg,#9b72ff24,#ff315511);color:#fff}
+.chip{border-radius:999px;padding:9px 16px}.chip.active{background:#f7f4ff;color:#17131f;box-shadow:0 5px 18px #fff2}
+.grid{gap:28px 20px}.video{border-radius:16px;animation:riseIn .5s both}.thumb{height:auto;aspect-ratio:16/9;border-radius:16px;border-color:#ffffff13;box-shadow:0 8px 24px #0002;transition:transform .25s,border-color .25s,box-shadow .25s}.video:hover .thumb{transform:translateY(-3px) scale(1.012);border-color:#9b72ff99;box-shadow:0 12px 35px #9b72ff16}.verified-badge{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:5px;border-radius:50%;background:#3196ff;color:white;font-size:12px;font-weight:900;vertical-align:middle}.video h3{font-size:15px;letter-spacing:-.1px}.meta{color:#a7a7bb}
+.channel-card,.profile-panel,.dialog,.description{background:linear-gradient(145deg,#191923,#121219);border-color:#ffffff12;box-shadow:0 12px 35px #0002}.profile-hero{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(120deg,#2b1d45,#211621 70%);border-color:#ffffff18;box-shadow:0 16px 45px #0003}.profile-hero:before{content:"";position:absolute;inset:0;background:var(--profile-banner,linear-gradient(120deg,#8b5cf633,#ff31551a));background-size:cover;background-position:center;opacity:.8;z-index:-1}.profile-avatar{object-fit:cover;border:3px solid #ffffff35;box-shadow:0 8px 25px #0005}.avatar img,.profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.modal{backdrop-filter:blur(12px)}.dialog{border-radius:22px;box-shadow:0 30px 100px #0009;animation:dialogIn .25s ease-out}.watch-layout{max-width:1750px}.player-box{border:1px solid #ffffff16;box-shadow:0 15px 45px #0005}.watch-player{object-fit:contain}
+#loobeeIntro{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 45%,#38224f 0,#14101e 38%,#08080d 78%);transition:opacity .65s ease,visibility .65s ease}#loobeeIntro.done{opacity:0;visibility:hidden;pointer-events:none}.intro-inner{text-align:center;animation:introRise .9s cubic-bezier(.2,.8,.2,1) both}.intro-mark{width:100px;height:76px;border-radius:25px;display:grid;place-items:center;margin:0 auto 18px;background:linear-gradient(135deg,#ff3155,#9b72ff);font-size:52px;font-weight:950;box-shadow:0 0 70px #9b72ff66;animation:introFloat 2.4s ease-in-out infinite}.intro-title{font-size:clamp(38px,7vw,66px);font-weight:900;letter-spacing:-3px}.intro-title span{background:linear-gradient(90deg,#fff,#cbb9ff,#ff8fa2);background-clip:text;color:transparent}.intro-sub{margin-top:10px;color:#b7b0c9;letter-spacing:2px;text-transform:uppercase;font-size:11px}.intro-loader{width:130px;height:3px;background:#ffffff18;border-radius:99px;overflow:hidden;margin:24px auto}.intro-loader:after{content:"";display:block;width:45%;height:100%;background:linear-gradient(90deg,#ff3155,#9b72ff);border-radius:99px;animation:loadSweep 1.15s ease-in-out infinite}
+/* Shorts are full-viewport cards: video fills the whole article, with details overlaid. */
+#content.shorts-feed{width:100%;max-width:none;margin:0;padding:18px 12px 28px;display:flex;flex-direction:column;align-items:center;gap:24px;scroll-snap-type:y mandatory}
+.short-card{position:relative;width:min(100%,560px);height:min( calc(100svh - 112px), 900px);min-height:520px;padding:0;overflow:hidden;border-radius:22px;border:1px solid #ffffff18;background:#050507;isolation:isolate;scroll-snap-align:start;box-shadow:0 18px 55px #0008}
+.short-card video{position:absolute;inset:0;width:100%;height:100%;max-height:none;aspect-ratio:auto;object-fit:cover;border-radius:0;background:#050507}
+.short-card:after{content:"";position:absolute;inset:40% 0 0;background:linear-gradient(transparent,#05050725 25%,#050507ed);z-index:1;pointer-events:none}
+.short-card h3{position:absolute;left:20px;right:20px;bottom:77px;z-index:2;font-size:21px;line-height:1.3;margin:0;text-shadow:0 2px 12px #000;overflow-wrap:anywhere}
+.short-card .meta{position:absolute;left:20px;right:20px;bottom:43px;z-index:2;color:#f1edf8;text-shadow:0 2px 10px #000}
+.short-card .feature-row{position:absolute;right:14px;bottom:15px;z-index:3;margin:0}.short-card .feature-row button{border-radius:999px;background:#17131dbd;border:1px solid #ffffff28;backdrop-filter:blur(10px)}
+.short-card video::-webkit-media-controls-panel{background-image:linear-gradient(transparent,#0008)}
+#pageTitle{letter-spacing:-.8px}main{animation:riseIn .45s ease both}
+@keyframes riseIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes introRise{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes introFloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}@keyframes loadSweep{from{transform:translateX(-110%)}to{transform:translateX(330%)}}@keyframes dialogIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes logoPulse{0%,100%{box-shadow:0 0 15px #ff315522}50%{box-shadow:0 0 27px #ff315566}}
+@media(max-width:720px){#content.shorts-feed{padding:0;gap:14px}.short-card{width:100%;height:calc(100svh - 126px);min-height:440px;border-radius:16px}.short-card h3{font-size:19px;bottom:79px}.short-card .meta{bottom:43px}.profile-hero{padding:20px}.intro-mark{width:82px;height:66px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+.danger{background:#8e2334}.admin-results{display:grid;gap:10px}
+
+/* Loobee Watch Page redesign — integrated into the full site */
+:root{--watch-accent:#a855f7;--watch-pink:#ec4899;--watch-surface:#17151f;--watch-border:rgba(255,255,255,.09)}
+#watchView{isolation:isolate;position:relative;min-height:70vh;background:radial-gradient(ellipse at 10% 0%,rgba(124,58,237,.13),transparent 36%),radial-gradient(ellipse at 95% 12%,rgba(236,72,153,.09),transparent 32%)}
+#watchView .watch-layout{grid-template-columns:minmax(0,1fr) minmax(285px,350px);gap:28px;max-width:1720px;margin:18px auto;padding:0 clamp(14px,2.2vw,34px);align-items:start}
+#watchView .watch-layout>section:first-child{min-width:0}
+#watchView .player-box{position:relative;aspect-ratio:16/9;width:100%;background:#07060b;border:1px solid rgba(192,132,252,.22);border-radius:20px;overflow:hidden;box-shadow:0 18px 55px rgba(0,0,0,.35),0 0 0 1px rgba(168,85,247,.04)}
+#watchView .player-box:before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 40px rgba(0,0,0,.18);z-index:1}
+#watchView .watch-player{display:block;width:100%;height:100%;object-fit:contain;background:#050508;outline:none}
+#watchView .watch-title{font-size:clamp(21px,2vw,29px);font-weight:800;letter-spacing:-.65px;line-height:1.22;margin:22px 0 17px;color:var(--text,#faf8ff);overflow-wrap:anywhere}
+#watchView .watch-row{gap:16px;padding-bottom:18px;border-bottom:1px solid var(--watch-border)}
+#watchView .channel-line{gap:12px;min-width:220px}
+#watchView .channel-line .avatar{width:48px;height:48px;flex:0 0 48px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#ec4899);box-shadow:0 0 0 3px rgba(168,85,247,.13);font-weight:800}
+#watchView #watchChannel{font-size:15px;font-weight:800;letter-spacing:.1px}
+#watchView #watchSubs{font-size:12px;margin-top:4px}
+#watchView #subscribeBtn{border:0;border-radius:999px;background:linear-gradient(110deg,#8b5cf6,#d946ef);color:white;font-weight:800;padding:10px 18px;box-shadow:0 6px 20px rgba(139,92,246,.22);transition:transform .18s,filter .18s}
+#watchView #subscribeBtn:hover{transform:translateY(-1px);filter:brightness(1.1)}
+#watchView .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+#watchView .header-actions button,#watchView .feature-row>button,#watchView .feature-row label,#watchView #backBrowse{border:1px solid var(--watch-border);border-radius:999px;background:rgba(255,255,255,.045);padding:9px 13px;color:inherit;transition:background .18s,border-color .18s,transform .18s}
+#watchView .header-actions button:hover,#watchView .feature-row>button:hover,#watchView #backBrowse:hover{background:rgba(168,85,247,.15);border-color:rgba(192,132,252,.45);transform:translateY(-1px)}
+#watchView .feature-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px}
+#watchView .feature-row .quality-control{display:flex;align-items:center;gap:8px;margin:0;border-radius:999px;padding:6px 11px;color:var(--muted,#b7b2c6)}
+#watchView .feature-row select{max-width:190px;border-radius:999px;padding:5px 9px;background:#201c2b;color:inherit;border:1px solid var(--watch-border)}
+#watchView .feature-note{font-size:12px;color:var(--muted,#aaa3ba)}
+#watchView .description{margin-top:16px;padding:19px 20px;border:1px solid var(--watch-border);border-radius:17px;background:linear-gradient(135deg,rgba(35,29,49,.95),rgba(22,21,30,.94));line-height:1.65}
+#watchView #watchStats{font-size:13px;color:#e9d5ff;display:block;margin-bottom:7px}
+#watchView #watchDescription{margin:0;color:#e0dce9;font-size:14px}
+#watchView .creator-tools{padding:12px;margin-top:12px;border:1px solid var(--watch-border);border-radius:14px;background:rgba(255,255,255,.025)}
+#watchView .comments{margin-top:28px}
+#watchView .comments h2{font-size:20px;letter-spacing:-.3px;margin-bottom:14px}
+#watchView .comment-form{gap:10px;align-items:center}
+#watchView .comment-form input{border:1px solid var(--watch-border);border-radius:999px;background:rgba(255,255,255,.045);padding:13px 17px;min-height:46px}
+#watchView .comment-form button{border-radius:999px;padding:11px 18px}
+#watchView .comment{padding:16px 4px;border-bottom:1px solid var(--watch-border)}
+#watchView .watch-layout>aside{position:sticky;top:18px;min-width:0;border:1px solid var(--watch-border);border-radius:18px;background:rgba(20,18,28,.72);padding:16px;backdrop-filter:blur(14px)}
+#watchView .watch-top{margin-bottom:14px}
+#watchView .watch-top h2{font-size:17px;font-weight:800;letter-spacing:-.25px}
+#watchView .recommendations{display:flex;flex-direction:column;gap:14px}
+#watchView .recommendation{grid-template-columns:minmax(110px,44%) minmax(0,1fr);gap:12px;margin:0;padding:7px;border-radius:12px;transition:background .18s,transform .18s}
+#watchView .recommendation:hover{background:rgba(168,85,247,.09);transform:translateY(-1px)}
+#watchView .recommendation .thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px;overflow:hidden;background:#292333}
+#watchView .recommendation h3{font-size:13px;line-height:1.35;margin:2px 0 7px;font-weight:750;overflow-wrap:anywhere}
+#watchView .recommendation .meta{font-size:11px;line-height:1.45}
+#watchView .toast{border-radius:10px}
+@media(max-width:1050px){#watchView .watch-layout{grid-template-columns:minmax(0,1fr) 300px;gap:18px}#watchView .watch-layout>aside{padding:12px}}
+@media(max-width:820px){#watchView .watch-layout{display:flex;flex-direction:column;padding:0 12px;margin:12px auto;gap:24px}#watchView .watch-layout>section:first-child,#watchView .watch-layout>aside{width:100%}#watchView .watch-layout>aside{position:static}#watchView .recommendations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#watchView .recommendation{display:flex;flex-direction:column;gap:8px;padding:6px}#watchView .recommendation .thumb{width:100%;height:auto;aspect-ratio:16/9}#watchView .recommendation h3{font-size:13px}#watchView .watch-title{margin-top:17px}}
+@media(max-width:520px){#watchView .player-box{border-radius:12px}#watchView .watch-row{align-items:flex-start}#watchView .header-actions{width:100%}#watchView .header-actions button{flex:1;padding:9px 8px;font-size:13px}#watchView .feature-row{gap:7px}#watchView .feature-row>button{font-size:12px;padding:8px 10px}#watchView .feature-row .quality-control{width:100%;justify-content:space-between}#watchView .feature-row select{max-width:65%}#watchView .description{padding:15px}#watchView .comment-form{align-items:stretch;flex-direction:column}#watchView .comment-form button{align-self:flex-end}#watchView .recommendations{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){#watchView *{scroll-behavior:auto!important;transition:none!important}}
+
+
+/* Integrated video-card CSS */
+/* Loobee video-card redesign — selectors match the current Loobee HTML. */
+:root{--lb-card:#15141e;--lb-border:rgba(196,181,253,.17);--lb-purple:#a78bfa;--lb-pink:#ff477e;--lb-muted:#aaa5bb}
+#content.grid,#profileVideos.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,255px),1fr));gap:30px 22px;align-items:start}
+#content.grid .video,#profileVideos.grid .video{position:relative;min-width:0;padding:0 0 4px;border-radius:17px;cursor:pointer;transition:transform .22s ease,filter .22s ease}
+#content.grid .video:hover,#profileVideos.grid .video:hover{transform:translateY(-5px);filter:drop-shadow(0 12px 22px rgba(0,0,0,.28))}
+#content.grid .thumb,#profileVideos.grid .thumb{position:relative;display:grid;place-items:center;width:100%;height:auto;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--lb-border);border-radius:17px;background:linear-gradient(135deg,#25213a,#17151e 55%,#311a2b);box-shadow:0 7px 24px #0003;isolation:isolate;transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease}
+#content.grid .video:hover .thumb,#profileVideos.grid .video:hover .thumb{border-color:#a78bfa99;box-shadow:0 10px 32px #8b5cf626,0 0 0 1px #a78bfa22}
+#content.grid .thumb img,#content.grid .thumb video,#profileVideos.grid .thumb img,#profileVideos.grid .thumb video{display:block;width:100%;height:100%;object-fit:cover;transition:transform .45s cubic-bezier(.2,.7,.2,1),filter .3s ease}
+#content.grid .video:hover .thumb img,#content.grid .video:hover .thumb video,#profileVideos.grid .video:hover .thumb img,#profileVideos.grid .video:hover .thumb video{transform:scale(1.055);filter:saturate(1.08) brightness(.83)}
+#content.grid .thumb:after,#profileVideos.grid .thumb:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(7,6,12,.35));z-index:1;pointer-events:none}
+#content.grid .thumb>span:not(.play),#profileVideos.grid .thumb>span:not(.play){color:#d7c9ff;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+#content.grid .thumb .play,#profileVideos.grid .thumb .play{z-index:2;display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid #ffffff77;border-radius:50%;background:rgba(15,12,23,.72);color:#fff;font-size:17px;box-shadow:0 5px 22px #0007;backdrop-filter:blur(9px);opacity:.92;transition:transform .2s ease,background .2s ease,opacity .2s ease}
+#content.grid .video:hover .play,#profileVideos.grid .video:hover .play{transform:scale(1.12);background:linear-gradient(135deg,var(--lb-purple),var(--lb-pink));opacity:1}
+#content.grid .video h3,#profileVideos.grid .video h3{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:12px 2px 5px;color:#f7f4ff;font-size:15px;font-weight:750;line-height:1.42;letter-spacing:-.012em;overflow-wrap:anywhere}
+#content.grid .video .meta,#profileVideos.grid .video .meta{margin:0 2px;color:var(--lb-muted);font-size:12.5px;line-height:1.65}
+#content.grid .video .verified-badge,#profileVideos.grid .video .verified-badge{box-shadow:0 0 12px #3196ff2a}
+#recommendations.recommendations{display:flex;flex-direction:column;gap:13px}
+#recommendations .recommendation{display:grid;grid-template-columns:minmax(125px,44%) minmax(0,1fr);align-items:start;gap:12px;margin:0;padding:8px;border:1px solid transparent;border-radius:15px;background:rgba(255,255,255,.025);transition:background .2s ease,border-color .2s ease,transform .2s ease}
+#recommendations .recommendation:hover{transform:translateY(-2px);background:rgba(167,139,250,.09);border-color:var(--lb-border)}
+#recommendations .recommendation .thumb{height:auto;aspect-ratio:16/9;border:1px solid var(--lb-border);border-radius:11px;background:linear-gradient(135deg,#25213a,#17151e)}
+#recommendations .recommendation .thumb img{display:block;width:100%;height:100%;object-fit:cover}
+#recommendations .recommendation .play{width:32px;height:32px;padding:0;display:grid;place-items:center;border-radius:50%;font-size:12px;background:#09070bbd;color:#fff}
+#recommendations .recommendation h3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 7px;color:#f7f4ff;font-size:13px;font-weight:750;line-height:1.4}
+#recommendations .recommendation .meta{font-size:11.5px;line-height:1.55;color:var(--lb-muted)}
+#profileVideos{margin-top:18px}
+.video:focus-visible{outline:2px solid var(--lb-purple);outline-offset:4px}
+@media(max-width:1050px){#content.grid,#profileVideos.grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:24px 17px}#recommendations.recommendations{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px}}
+@media(max-width:720px){#content.grid,#profileVideos.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 12px}#content.grid .thumb,#profileVideos.grid .thumb{border-radius:13px}#content.grid .video h3,#profileVideos.grid .video h3{font-size:13.5px;margin-top:9px}#content.grid .video .meta,#profileVideos.grid .video .meta{font-size:11.5px}#recommendations .recommendation{grid-template-columns:minmax(110px,42%) minmax(0,1fr);gap:10px}}
+@media(max-width:390px){#content.grid,#profileVideos.grid{grid-template-columns:minmax(0,1fr)}#content.grid .video h3,#profileVideos.grid .video h3{font-size:15px}}
+@media(prefers-reduced-motion:reduce){#content.grid .video,#content.grid .thumb img,#content.grid .video .play,#profileVideos.grid .video,#profileVideos.grid .thumb img,#recommendations .recommendation{transition:none!important}}
+
+
+/* Loobee original custom playback HUD */
+.lb-controls .lb-quality-label{font-size:11px;color:#bbb;margin-left:2px}.lb-controls #qualitySelect{max-width:132px}.lb-controls select option:disabled{color:#8c8495}.lb-buffer{position:absolute;z-index:1;left:0;top:50%;height:4px;transform:translateY(-50%);border-radius:20px;background:#ffffff55;pointer-events:none;max-width:100%}.lb-progress-wrap:hover .lb-buffer{height:6px}.lb-seek::-moz-range-track{height:4px;border-radius:20px;background:#ffffff45}.lb-seek::-moz-range-progress{height:4px;border-radius:20px;background:linear-gradient(90deg,var(--lb-accent),var(--lb-accent2))}.lb-seek:focus-visible{outline:2px solid #f0abfc;outline-offset:4px}
+@media(max-width:650px){.lb-controls .lb-quality-label{display:none}.lb-controls #qualitySelect{max-width:84px}}
+
+#watchView .loobee-player{--lb-accent:#b45cff;--lb-accent2:#f05ac8;position:relative;isolation:isolate;cursor:pointer;background:#06050a;border:1px solid rgba(185,126,255,.3);border-radius:20px;overflow:hidden;box-shadow:0 22px 70px #0008,0 0 35px #9c4dff12;aspect-ratio:16/9;transition:border-color .2s,box-shadow .2s}
+#watchView .loobee-player:hover{border-color:#b45cff88;box-shadow:0 22px 70px #0009,0 0 30px #9c4dff19}
+#watchView .loobee-player .watch-player{width:100%;height:100%;display:block;object-fit:contain;background:#050408;cursor:pointer}
+#watchView .loobee-player:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#0005 0%,transparent 18%,transparent 58%,#000b 100%);opacity:.7;z-index:1}
+.lb-hud{position:absolute;z-index:3;left:0;right:0;bottom:0;padding:30px 18px 14px;background:linear-gradient(0deg,rgba(8,6,14,.96),rgba(8,6,14,.72) 55%,transparent);opacity:0;transform:translateY(5px);transition:opacity .2s,transform .2s;cursor:default}
+.loobee-player:hover .lb-hud,.loobee-player:focus-within .lb-hud,.loobee-player.lb-playing .lb-hud,.loobee-player.lb-paused .lb-hud{opacity:1;transform:none}
+.lb-progress-wrap{height:16px;display:flex;align-items:center;position:relative;margin:0 0 7px;cursor:pointer}
+.lb-seek{appearance:none;-webkit-appearance:none;position:relative;z-index:2;width:100%;height:4px;padding:0;margin:0;border:0;border-radius:20px;background:linear-gradient(to right,var(--lb-accent) 0%,var(--lb-accent2) var(--lb-progress,0%),#ffffff55 var(--lb-progress,0%),#ffffff55 100%);cursor:pointer;transition:height .15s}
+.lb-progress-wrap:hover .lb-seek{height:7px}.lb-seek::-webkit-slider-thumb{appearance:none;width:12px;height:12px;border:2px solid white;border-radius:50%;background:var(--lb-accent2);box-shadow:0 0 0 4px #d946ef30;opacity:0;transition:opacity .15s}.lb-progress-wrap:hover .lb-seek::-webkit-slider-thumb{opacity:1}.lb-seek::-moz-range-thumb{width:10px;height:10px;border:2px solid white;border-radius:50%;background:var(--lb-accent2)}
+.lb-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#fff}.lb-controls-left,.lb-controls-right{display:flex;align-items:center;gap:9px;min-width:0}.lb-controls button{display:inline-grid;place-items:center;min-width:32px;height:32px;padding:0 7px;border-radius:9px;background:transparent;color:#fff;font-size:16px;line-height:1;transition:background .15s,color .15s}.lb-controls button:hover{background:#ffffff1b;color:#f0abfc}.lb-controls #lbBack,.lb-controls #lbForward{font-size:12px;font-weight:750;min-width:34px}.lb-controls #lbVolume{width:75px;height:4px;padding:0;border:0;background:#ffffff55;accent-color:#d946ef}.lb-time{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#eee}.lb-time i{font-style:normal;color:#aaa;margin:0 4px}.lb-brand{font-size:10px;letter-spacing:1.5px;font-weight:900;color:#ddd;white-space:nowrap}.lb-brand b{color:#e879f9}.lb-speed-label{font-size:11px;color:#bbb;margin-left:2px}.lb-controls select{max-width:80px;padding:6px 7px;border-radius:8px;border:1px solid #ffffff25;background:#21172d;color:#fff;font-size:11px}.lb-center-play{position:absolute;z-index:2;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .2s}.lb-center-play button{pointer-events:auto;width:68px;height:68px;border-radius:24px;border:1px solid #ffffff55;background:linear-gradient(135deg,#9333eaed,#db2777e8);box-shadow:0 8px 45px #a855f766;color:white;font-size:24px;padding-left:5px;backdrop-filter:blur(10px);transition:transform .2s}.loobee-player.lb-paused .lb-center-play{opacity:1}.loobee-player.lb-paused .lb-center-play button:hover{transform:scale(1.08)}.loobee-player.lb-playing .lb-center-play{opacity:0}.lb-live-toast{position:absolute;z-index:4;top:16px;left:50%;transform:translateX(-50%);padding:8px 13px;border-radius:999px;background:#171020dd;border:1px solid #ffffff20;color:#fff;font-size:12px;opacity:0;pointer-events:none;transition:opacity .2s}.lb-live-toast.show{opacity:1}.loobee-player.lb-theater{position:relative;grid-column:1/-1;width:100%;max-height:82vh;aspect-ratio:16/9}.watch-layout.lb-theater-layout{grid-template-columns:minmax(0,1fr)!important}.watch-layout.lb-theater-layout>aside{position:static}.loobee-player:fullscreen{width:100vw;height:100vh;max-height:none;aspect-ratio:auto;border-radius:0;border:0}.loobee-player:fullscreen .watch-player{width:100%;height:100%;object-fit:contain}.loobee-player:fullscreen .lb-hud{padding:38px 30px 22px}
+@media(max-width:650px){.lb-hud{padding:24px 9px 9px}.lb-controls{gap:5px}.lb-controls-left,.lb-controls-right{gap:3px}.lb-controls button{min-width:28px;height:30px;font-size:14px}.lb-controls #lbVolume{width:43px}.lb-brand,.lb-speed-label{display:none}.lb-controls select{max-width:58px;padding:5px 3px}.lb-time{font-size:10px}.lb-center-play button{width:55px;height:55px;border-radius:19px}}
+@media(prefers-reduced-motion:reduce){.lb-hud,.lb-center-play,.lb-controls button{transition:none!important}}
+
+.creator-profile-link{color:inherit;text-decoration:none;font-weight:600}.creator-profile-link:hover{text-decoration:underline;color:#c4b5fd}
+
+
+/* Loobee CEO crown and badge */
+.ceo-crown{display:inline-block;margin-left:6px;color:#ffd700;font-size:19px;vertical-align:middle;filter:drop-shadow(0 0 5px #ffd70080)}
+.ceo-badge{display:inline-flex;align-items:center;gap:4px;margin-left:7px;padding:4px 9px;border:1px solid #ffe27a;border-radius:999px;background:linear-gradient(135deg,#fff0a6,#ffc107,#d99a00);color:#241800;font-size:10px;font-weight:900;letter-spacing:.7px;vertical-align:middle;box-shadow:0 0 12px #ffc10730;white-space:nowrap}
+.loobee-username-link{color:inherit;text-decoration:none;cursor:pointer}.loobee-username-link:hover{color:#c4b5fd;text-decoration:underline}
+
+
+#moderationBanner{font-weight:600}
+</style></head>
 <body>
-<main>
-<header>
-  <p>LOOBEE · DEVELOPER TOOLS</p>
-  <h1>Database Check & Fix</h1>
-  <p>Connection diagnostics, account-mode inspection and reviewed SQL repair.</p>
-</header>
-
-<section class="panel">
-<h2>1. Version checker</h2>
-<div id="version" class="status"></div>
-<div id="environment" class="status">Supabase client: checking…</div>
-</section>
-
-<section class="panel">
-<h2>2. Supabase connection</h2>
-<p>Use your project's publishable key or legacy anon key. Never enter a service-role or secret key.</p>
-<label for="project">Project URL</label>
-<input id="project" value="https://npnxfvqnjdvqgyecoxdu.supabase.co" autocomplete="url">
-<label for="key">Publishable / anon key</label>
-<input id="key" type="password" placeholder="Paste your public client key">
-<button id="connect">Test connection</button>
-<div id="connection" class="status">Not tested.</div>
-</section>
-
-<section class="panel">
-<h2>3. Database diagnostics</h2>
-<p>Reads up to 1,000 visible profile rows. Row-level security may limit results. A failed read does not prove the table is missing.</p>
-<button id="inspect" disabled>Inspect account modes</button>
-<div id="diagnostics" class="status">Connect first.</div>
-<div id="results"></div>
-</section>
-
-<section class="panel">
-<h2>4. SQL repair generator</h2>
-<p>The generator preserves observed account modes and includes <code>normal</code> and <code>watch_only</code>. It does not execute SQL or modify your database.</p>
-<label for="extra">Additional existing modes (optional, comma-separated)</label>
-<input id="extra" placeholder="Only add modes you have verified">
-<button id="generate" class="secondary">Generate reviewed SQL</button>
-<div id="sqlStatus" class="status">Inspect the database first, then generate SQL.</div>
-<label for="sql">Generated SQL</label>
-<textarea id="sql" rows="15" spellcheck="false" placeholder="Generated SQL appears here."></textarea>
-<button id="copy" class="secondary">Copy SQL</button>
-<button id="download" class="secondary">Download SQL</button>
-<p><small>Review the generated SQL and your existing application logic before running it in Supabase SQL Editor.</small></p>
-<a href="https://supabase.com/dashboard/project/npnxfvqnjdvqgyecoxdu/sql/new" target="_blank" rel="noopener noreferrer">Open Supabase SQL Editor</a>
-</section>
-
-<section class="panel">
-<h2>5. Manual read-only diagnostic</h2>
-<p>If browser access is blocked by permissions, run this query in the SQL Editor:</p>
-<pre id="manual">SELECT account_mode, COUNT(*) AS total
-FROM public.profiles
-GROUP BY account_mode
-ORDER BY total DESC;</pre>
-<button id="copyManual" class="secondary">Copy diagnostic query</button>
-</section>
-
-<section class="panel">
-<h2>Safety notes</h2>
-<ul>
-<li>This page only reads data through the public client API.</li>
-<li>It does not ban users, change profiles, or run generated SQL.</li>
-<li>Existing modes may include administrative or moderation states. Do not remove them without checking the application code.</li>
-<li>A constraint does not implement AI moderation by itself.</li>
-<li>Never put a service-role key or an AI provider secret in this HTML.</li>
-</ul>
-</section>
-</main>
-
+<div id="loobeeIntro" aria-label="Welcome to Loobee"><div class="intro-inner"><div class="intro-mark">L</div><div class="intro-title"><span>Loobee</span></div><div class="intro-sub">Watch something wonderful</div><div class="intro-loader"></div></div></div>
+<header><div class="logo" id="homeLogo"><span class="logo-mark">L</span> Loobee</div><form class="search" id="searchForm"><input id="searchInput" placeholder="Search Loobee" aria-label="Search videos"><button type="submit">Search</button></form><div class="header-actions"><button id="uploadOpen" class="primary">＋ Upload</button><button id="profileOpen" class="profile-button hidden"><span class="avatar" id="headerAvatar">?</span><span id="headerUsername">Profile</span></button><button id="adminOpen" class="hidden">🛡 Owner Admin</button><button id="systemStatsOpen" title="Check Loobee services">📊 System stats</button><button id="authOpen">Sign in</button></div></header>
+<div id="moderationBanner" class="security-note hidden" role="status" style="margin:12px 22px;border:1px solid #7c5a2b;background:#2c2418;color:#ffe2a6"></div>
+<div id="browseView"><div class="layout"><aside class="sidebar"><button class="nav active" data-page="home">⌂ Home</button><button class="nav" data-page="channels">◎ Channels</button><button class="nav" data-page="subscriptions">♡ Subscriptions</button><button class="nav" data-page="myvideos">▣ My videos</button><button class="nav" data-page="shorts">▯ Shorts</button><button class="nav" data-page="warnings">⚠ Warnings</button></aside><main><h1 id="pageTitle">Explore Loobee</h1><p class="sub" id="pageSubtitle">Videos uploaded by the Loobee community.</p><div class="chips" id="chips"><button class="chip active" data-category="All">All</button><button class="chip" data-category="Gaming">Gaming</button><button class="chip" data-category="Music">Music</button><button class="chip" data-category="Tech">Tech</button><button class="chip" data-category="Other">Other</button></div><div id="status" aria-live="polite"></div><div id="content" class="grid"></div></main></div></div>
+<div id="watchView" class="hidden"><div class="watch-layout"><section><div class="player-box loobee-player" id="loobeePlayerBox" tabindex="0" aria-label="Loobee custom video player">
+<video class="watch-player" id="watchPlayer" controlsList="nodownload noremoteplayback" disablepictureinpicture playsinline preload="metadata">Your browser does not support video playback.</video>
+<div class="lb-center-play" id="lbCenterPlay"><button type="button" aria-label="Play video">▶</button></div>
+<div class="lb-hud" id="lbHud"><div class="lb-progress-wrap"><input id="lbSeek" class="lb-seek" type="range" min="0" max="1000" value="0" aria-label="Seek video"><div class="lb-buffer" id="lbBuffer"></div></div><div class="lb-controls"><div class="lb-controls-left"><button type="button" id="lbPlay" aria-label="Play">▶</button><button type="button" id="lbBack" aria-label="Back 10 seconds">↶10</button><button type="button" id="lbForward" aria-label="Forward 10 seconds">10↷</button><button type="button" id="lbMute" aria-label="Mute">🔊</button><input id="lbVolume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"><span class="lb-time"><span id="lbCurrent">0:00</span><i>/</i><span id="lbDuration">0:00</span></span></div><div class="lb-controls-right"><span class="lb-brand">LOOBEE <b>PLAY</b></span><label class="lb-speed-label" for="lbSpeed">Speed</label><select id="lbSpeed" aria-label="Playback speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2">2×</option></select><label class="lb-quality-label" for="qualitySelect" title="Video quality">Quality</label><select id="qualitySelect" aria-label="Video quality" title="Video quality"><option value="auto">Auto</option></select><button type="button" id="lbTheater" aria-label="Theater mode" title="Theater mode">▰</button><button type="button" id="lbFullscreen" aria-label="Fullscreen" title="Fullscreen">⛶</button></div></div></div><div class="lb-live-toast" id="lbToast" aria-live="polite"></div></div><h1 class="watch-title" id="watchTitle">Loading video…</h1><div class="watch-row"><div class="channel-line"><div class="avatar" id="watchAvatar">L</div><div><strong id="watchChannel">Loobee creator</strong><div class="meta" id="watchSubs"></div></div><button id="subscribeBtn" class="primary hidden">Subscribe</button></div><div class="header-actions"><button id="likeBtn">👍 <span id="likeCount">0</span></button><button id="dislikeBtn">👎 <span id="dislikeCount">0</span></button><button id="shareBtn">↗ Share</button></div></div><div id="watchNotice" class="toast" aria-live="polite"></div><div class="feature-row" id="extraVideoActions"><button id="fullscreenBtn">⛶ Fullscreen</button><button id="hypeBtn" class="hype-button">🔥 Hype <span id="hypeCount">0</span></button><button id="reportBtn">⚑ Report video</button><button id="deleteVideoBtn" class="danger hidden">Delete my video</button><span id="qualityInfo" class="feature-note">Quality options depend on the versions uploaded by the creator.</span></div><div class="description"><strong id="watchStats">Loobee video</strong><p id="watchDescription">No description provided.</p></div><div id="creatorTools" class="creator-tools hidden"><button id="toggleCommentsBtn">Disable comments</button><button id="togglePrivateBtn">Make private</button></div><section class="comments"><h2>Comments <span id="commentCount" class="meta"></span></h2><div id="commentArea"><form class="comment-form" id="commentForm"><input id="commentInput" maxlength="2000" placeholder="Add a comment…" required><button class="primary" type="submit">Comment</button></form><div id="comments"></div></div></section></section><aside><div class="watch-top"><h2 style="margin-top:0">Up next</h2><button id="backBrowse">Browse</button></div><div id="recommendations" class="recommendations"></div></aside></div></div>
+<div id="profileView" class="hidden"><div class="profile-view"><div class="watch-top"><button id="profileBack">← Back</button><span class="meta" id="profileNotice" aria-live="polite"></span></div><section class="profile-hero" id="profileHero"><div class="profile-avatar" id="profileAvatar">?</div><div style="flex:1;min-width:220px"><h1 id="profileName">Profile</h1><p class="meta" id="profileEmail"></p><div class="profile-about" id="profileAbout">No about information yet.</div></div><button id="editProfileBtn" class="primary hidden">Edit profile</button><button id="securityOpenBtn" class="hidden">🔐 Security / 2FA</button><button id="accountToolsBtn" class="hidden">Account settings</button><button id="profileSubscribeBtn" class="primary hidden">Subscribe</button></section><section id="profileEditPanel" class="profile-panel hidden"><h2>Edit your profile</h2><form id="profileForm"><label for="profileUsernameInput">Username (unique)</label><input id="profileUsernameInput" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" required><label for="profileDisplayNameInput">Display name</label><input id="profileDisplayNameInput" maxlength="40" required><label for="profileAboutInput">About you</label><textarea id="profileAboutInput" maxlength="1000" rows="5" placeholder="Tell people about yourself. Links here can be clicked."></textarea><label for="profileAvatarFile">Profile picture (optional, JPG/PNG/WebP, max 5 MB)</label><input id="profileAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><label for="profileBannerFile">Channel banner (optional, JPG/PNG/WebP, max 8 MB)</label><input id="profileBannerFile" type="file" accept="image/png,image/jpeg,image/webp"><p class="meta">Profile pictures and banners use the Supabase Storage bucket named <code>profile-media</code>. Run the included setup SQL before using these fields.</p><div class="form-row"><button class="primary" type="submit">Save profile</button><button type="button" id="cancelProfileEdit">Cancel</button></div></form></section><h2>Videos</h2><div id="profileVideos" class="grid"></div></div></div>
+<div class="modal" id="authModal"><div class="dialog"><button style="float:right" data-close="authModal">✕</button><h2>Welcome to Loobee</h2><p class="meta">Sign in or create an account.</p><button class="primary" id="googleLogin" style="width:100%">Continue with Google</button><p class="meta" style="text-align:center">or use your email</p><form id="authForm"><div id="signupFields" class="hidden"><label for="signupUsername">Username (unique)</label><input id="signupUsername" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="e.g. LowVR_Fan"><label for="signupDisplayName">Display name</label><input id="signupDisplayName" maxlength="40" placeholder="Name people see"><p class="meta">Username uses 3–24 letters, numbers or underscores. You can change both later in your profile.</p></div><label for="email">Email</label><input id="email" type="email" autocomplete="email" required><label for="password">Password</label><input id="password" type="password" minlength="6" autocomplete="current-password" required><div class="form-row"><button class="primary" id="authSubmit" type="submit">Sign in</button><button type="button" id="signup">Create account</button></div></form><div id="authMessage" aria-live="polite"></div></div></div>
+<div class="modal" id="uploadModal"><div class="dialog"><button style="float:right" data-close="uploadModal">✕</button><h2>Upload a video</h2><p class="meta">Loobee AI scans sampled video frames and removes detected sexual, graphic-violence and self-harm sections before upload. If most of a video is unsafe, the upload is rejected for manual editing.</p><form id="uploadForm"><label for="videoTitle">Video title</label><input id="videoTitle" maxlength="120" required><label for="videoDescription">Description</label><textarea id="videoDescription" rows="3" maxlength="3000"></textarea><label for="videoCategory">Category</label><select id="videoCategory" style="width:100%;padding:11px;background:#111116;color:white;border:1px solid #393943;border-radius:9px"><option>Gaming</option><option>Music</option><option>Tech</option><option>Other</option></select><label for="videoFile">Video file</label><input id="videoFile" type="file" accept="video/*" required><p class="feature-note">Large uploads use resumable transfer and show progress. The video processor and your hosting/Supabase plan still have their own size and timeout limits; automatic processing supports videos up to 30 minutes.</p><label class="setting"><input id="uploadShort" type="checkbox"> Publish as a Short (vertical video)</label><p class="feature-note">4K playback is available when you upload a genuine 2160p video; Loobee does not upscale lower-resolution videos.</p><label for="thumbnailFile">Thumbnail (optional)</label><input id="thumbnailFile" type="file" accept="image/png,image/jpeg,image/webp"><label class="setting"><input id="uploadPrivate" type="checkbox"> Mark video private (requires secure private Storage setup)</label><div class="form-row"><button class="primary" type="submit">Upload video</button><button type="button" data-close="uploadModal">Cancel</button></div><div id="uploadMessage" aria-live="polite"></div></form></div></div>
+<div class="modal" id="securityModal"><div class="dialog"><button style="float:right" data-close="securityModal">✕</button><h2>Account security</h2><p class="meta">Add authenticator-app two-factor authentication (2FA) to help protect your Loobee account.</p><div id="securityStatus" class="security-note" aria-live="polite">Checking your security settings…</div><div id="totpEnrollArea" class="hidden"><h3>Set up an authenticator app</h3><p class="meta">Scan this QR code with an authenticator app, then enter the 6-digit code it gives you.</p><img id="totpQr" class="totp-qr" alt="Authenticator setup QR code"><label for="totpSecret">Manual setup key</label><input id="totpSecret" readonly><label for="totpCode">6-digit verification code</label><input id="totpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"><div class="security-actions"><button id="verifyTotpBtn" class="primary">Verify and enable 2FA</button><button id="cancelTotpBtn">Cancel setup</button></div></div><div id="totpEnabledArea" class="hidden"><h3>Two-factor authentication is enabled</h3><p class="meta">Keep access to your authenticator app. If you lose it, account recovery may require help from your service provider.</p><label for="removeTotpCode">Enter a current 6-digit code to disable 2FA</label><input id="removeTotpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"><div class="security-actions"><button id="disableTotpBtn">Disable 2FA</button></div></div><div id="securityMessage" aria-live="polite"></div></div></div>
+<div class="modal" id="mfaChallengeModal"><div class="dialog"><h2>Verify it's you</h2><p class="meta">Enter the 6-digit code from your authenticator app to finish signing in.</p><form id="mfaChallengeForm"><label for="mfaChallengeCode">Authenticator code</label><input id="mfaChallengeCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required><button class="primary" type="submit">Verify and continue</button></form><div id="mfaChallengeMessage" aria-live="polite"></div></div></div>
+<div class="modal" id="accountToolsModal"><div class="dialog"><button style="float:right" data-close="accountToolsModal">✕</button><h2>Account settings</h2><p class="meta">Review account warnings or request account deletion. Deletion is permanent.</p><button id="loadWarningsBtn">View my warnings</button><div id="accountWarnings"></div><hr style="border-color:#303039;margin:20px 0"><h3>Delete account</h3><p class="meta">This calls a secure Supabase Edge Function. Deploy the included delete-account function before using this option.</p><label for="deleteAccountConfirm">Type DELETE to confirm</label><input id="deleteAccountConfirm" placeholder="DELETE"><button id="deleteAccountBtn" class="danger">Permanently delete account</button><div id="accountToolsMessage" aria-live="polite"></div><section id="adminModerationPanel" class="profile-panel hidden"><h3>Admin moderation</h3><p class="meta">Review reports and issue warnings. Only the configured admin account can access this panel.</p><button id="refreshReportsBtn">Refresh reports</button><div id="adminReports"></div></section></div></div>
+<div class="modal" id="reportModal"><div class="dialog"><button style="float:right" data-close="reportModal">✕</button><h2>Report video</h2><p class="meta">Reports are sent to Loobee moderation for review.</p><label for="reportReason">Reason</label><select id="reportReason" style="width:100%;padding:11px;background:#111116;color:white;border:1px solid #393943;border-radius:9px"><option>Spam or misleading</option><option>Harassment or bullying</option><option>Hate or abusive content</option><option>Dangerous content</option><option>Copyright concern</option><option>Other</option></select><label for="reportDetails">Details (optional)</label><textarea id="reportDetails" rows="3" maxlength="1000"></textarea><button id="submitReportBtn" class="primary">Submit report</button><div id="reportMessage" aria-live="polite"></div></div></div>
+<div class="modal" id="ownerAdminModal"><div class="dialog"><button style="float:right" data-close="ownerAdminModal">✕</button><h2>🛡 Loobee Owner Admin</h2><p class="meta">Owner account: lowvr81@gmail.com. Search accounts, verify creators, or delete accounts. Deletion removes that account’s videos and related data and emails the reason when email delivery is configured.</p><label for="adminSearch">Search accounts by email, username, or display name</label><input id="adminSearch" placeholder="Type to search accounts…" autocomplete="off"><div class="feature-row"><button id="adminSearchBtn" class="primary">Search accounts</button><button id="adminRefreshBtn">Refresh</button></div><div id="adminMessage" aria-live="polite"></div><div id="adminResults"></div></div></div>
+<div class="modal" id="systemStatsModal"><div class="dialog"><button style="float:right" data-close="systemStatsModal">✕</button><h2>📊 Loobee System Stats</h2><p class="meta">Live diagnostic checks. Green means the check passed; red means it failed; amber means the setting is missing or cannot be verified from the browser.</p><div class="feature-row"><button id="runSystemChecks" class="primary">Run checks again</button><span id="systemStatsTime" class="meta"></span></div><div id="systemStatsResults" aria-live="polite"><div class="empty">Click “Run checks again” to test Loobee.</div></div><p class="meta">These checks never upload, delete, or modify videos. They cannot prove 100 GB uploads will work; that also depends on Supabase and hosting limits.</p></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
 <script>
-(() => {
-"use strict";
-
-const TOOL_VERSION = "1.0.0";
-const $ = id => document.getElementById(id);
-let db = null;
-let observedModes = [];
-let inspected = false;
-
-$("version").textContent = "Tool version: v" + TOOL_VERSION;
-$("environment").textContent =
-  "Supabase JavaScript library: " +
-  (window.supabase?.createClient ? "available" : "unavailable");
-
-function status(id, message, ok) {
-  const el = $(id);
-  el.textContent = message;
-  el.className = "status " +
-    (ok === true ? "good" : ok === false ? "bad" : "");
-}
-
-function validProjectUrl(value) {
-  try {
-    const u = new URL(value);
-    return u.protocol === "https:" && u.hostname.endsWith(".supabase.co");
-  } catch {
-    return false;
-  }
-}
-
-$("connect").addEventListener("click", async () => {
-  const url = $("project").value.trim().replace(/\/+$/, "");
-  const key = $("key").value.trim();
-
-  if (!validProjectUrl(url)) {
-    status("connection", "Enter a valid HTTPS Supabase project URL.", false);
-    return;
-  }
-  if (!key) {
-    status("connection", "Enter your publishable or anon key.", false);
-    return;
-  }
-  if (!window.supabase?.createClient) {
-    status("connection", "Supabase client library failed to load.", false);
-    return;
-  }
-
-  try {
-    db = window.supabase.createClient(url, key);
-    status("connection", "Client created. Checking authentication session…");
-    const { data, error } = await db.auth.getSession();
-    if (error) throw error;
-
-    status(
-      "connection",
-      "Client initialized. Session: " +
-      (data.session ? "signed in" : "not signed in") +
-      ". Database access still needs a separate test.",
-      true
-    );
-    $("inspect").disabled = false;
-    inspected = false;
-    observedModes = [];
-    $("results").replaceChildren();
-    $("sql").value = "";
-    status("diagnostics", "Ready to inspect profiles.");
-  } catch (e) {
-    status("connection", "Connection setup failed: " + e.message, false);
-  }
-});
-
-$("inspect").addEventListener("click", async () => {
-  if (!db) return;
-  status("diagnostics", "Reading visible profile rows…");
-  $("results").replaceChildren();
-  inspected = false;
-  observedModes = [];
-
-  try {
-    const { data, error } = await db
-      .from("profiles")
-      .select("account_mode, moderation_strikes")
-      .limit(1000);
-
-    if (error) throw error;
-
-    const counts = new Map();
-    for (const row of data || []) {
-      const mode = row.account_mode == null
-        ? "(NULL)"
-        : String(row.account_mode);
-      counts.set(mode, (counts.get(mode) || 0) + 1);
-    }
-
-    observedModes = [...counts.keys()].filter(m => m !== "(NULL)");
-    inspected = true;
-
-    const table = document.createElement("table");
-    const head = document.createElement("tr");
-    ["Account mode", "Visible rows", "Normal/watch-only constraint"].forEach(t => {
-      const th = document.createElement("th");
-      th.textContent = t;
-      head.appendChild(th);
+const SUPABASE_URL="https://npnxfvqnjdvqgyecoxdu.supabase.co";
+const SUPABASE_KEY="sb_publishable_jH73fmYtkQ1Vkz2BsrK4Wg_SSZFvcjB";
+// Set this to your deployed video-processor URL, for example https://your-service.example.com/process-video.
+const VIDEO_PROCESSOR_URL="";
+const db=window.supabase?.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);let user=null,page="home",category="All",searchTerm="",videos=[],currentVideo=null,commentsEnabled=true,viewedProfileId=null,profileReturnView="browse";
+async function uploadWithResume(bucket,path,file,contentType,onProgress){
+  const {data:{session}}=await db.auth.getSession();
+  if(!session?.access_token) throw new Error('Your sign-in session expired. Sign in again.');
+  if(!window.tus?.Upload) throw new Error('Resumable upload library did not load. Check your internet connection and refresh the page.');
+  const endpoint=SUPABASE_URL.replace(/\/$/,'')+'/storage/v1/upload/resumable';
+  return await new Promise((resolve,reject)=>{
+    const upload=new tus.Upload(file,{
+      endpoint,
+      retryDelays:[0,1000,3000,5000,10000,20000],
+      chunkSize:6*1024*1024,
+      uploadDataDuringCreation:true,
+      removeFingerprintOnSuccess:true,
+      headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+session.access_token},
+      metadata:{bucketName:bucket,objectName:path,contentType:contentType||file.type||'application/octet-stream',cacheControl:'3600'},
+      onError:error=>reject(error),
+      onProgress:(sent,total)=>onProgress?.(sent,total),
+      onSuccess:()=>resolve()
     });
-    const thead = document.createElement("thead");
-    thead.appendChild(head);
-    table.appendChild(thead);
-
-    const body = document.createElement("tbody");
-    if (!counts.size) {
-      const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 3;
-      td.textContent = "No visible rows returned.";
-      tr.appendChild(td);
-      body.appendChild(tr);
-    }
-
-    for (const [mode, count] of counts) {
-      const tr = document.createElement("tr");
-      const allowed = mode === "normal" || mode === "watch_only";
-      [mode, String(count), mode === "(NULL)" ? "NULL needs review" :
-        allowed ? "Allowed" : "Would violate the two-mode constraint"].forEach((value, i) => {
-        const td = document.createElement("td");
-        td.textContent = value;
-        if (i === 2) td.className = allowed ? "good" : "bad";
-        tr.appendChild(td);
-      });
-      body.appendChild(tr);
-    }
-    table.appendChild(body);
-    $("results").appendChild(table);
-
-    status("diagnostics",
-      `Read succeeded: ${data.length} visible row(s). ` +
-      "This may be only a subset because of row-level security or the 1,000-row limit.",
-      true);
-    status("sqlStatus", "Inspection complete. Review the modes before generating SQL.");
-  } catch (e) {
-    status("diagnostics",
-      "Profile read failed: " + e.message +
-      ". Check table permissions, column names and RLS policies.", false);
-  }
-});
-
-function quoteSql(value) {
-  return "'" + value.replace(/'/g, "''") + "'";
+    upload.findPreviousUploads().then(previous=>{if(previous.length)upload.resumeFromPreviousUpload(previous[0]);upload.start()}).catch(reject);
+  });
 }
+function verifiedBadge(isVerified){return isVerified?'<span class="verified-badge" title="Verified Loobee creator" aria-label="Verified creator">✓</span>':''}
+function dismissIntro(){const intro=$('loobeeIntro');if(intro&&!intro.classList.contains('done'))setTimeout(()=>intro.classList.add('done'),1350)}
+function setImageOrInitial(el,url,initial){if(!el)return;el.replaceChildren();if(url){const im=document.createElement('img');im.src=url;im.alt='';im.loading='lazy';im.onerror=()=>{el.replaceChildren(document.createTextNode(initial||'?'))};el.append(im)}else el.textContent=initial||'?'}
+function uploadProfileImage(file,kind){return new Promise(async(resolve,reject)=>{if(!file)return resolve(null);const max=kind==='banner'?8*1024*1024:5*1024*1024;if(!/^image\/(png|jpeg|webp)$/.test(file.type))return reject(new Error('Choose a JPG, PNG or WebP image.'));if(file.size>max)return reject(new Error(`Image must be under ${kind==='banner'?8:5} MB.`));const ext=file.type==='image/jpeg'?'jpg':file.type.split('/')[1];const path=`${user.id}/${kind}-${crypto.randomUUID()}.${ext}`;const up=await db.storage.from('profile-media').upload(path,file,{upsert:true,contentType:file.type});if(up.error)return reject(up.error);resolve(db.storage.from('profile-media').getPublicUrl(path).data.publicUrl)})}
+function msg(id,text,error=false){const el=$(id);if(!el)return;el.textContent=text;el.className=error?"error":""}
+let moderationState={mode:'active',strikes:0,reason:''};
+async function refreshModerationState(){if(!db||!user){moderationState={mode:'active',strikes:0,reason:''};$('moderationBanner')?.classList.add('hidden');return moderationState}const{data,error}=await db.from('profiles').select('account_mode,moderation_strikes,moderation_reason').eq('id',user.id).maybeSingle();if(error){console.warn('Moderation status could not be loaded:',error.message);return moderationState}moderationState={mode:data?.account_mode||'active',strikes:Number(data?.moderation_strikes||0),reason:data?.moderation_reason||''};const banner=$('moderationBanner');if(banner){if(moderationState.mode==='watch_only'){banner.textContent='Loobee Watch-only mode: you can still watch videos, but uploads and comments are disabled. Reason: '+(moderationState.reason||'Community rules review')+'. If you think this is a mistake, contact Loobee support to appeal.';banner.classList.remove('hidden');$('uploadOpen').disabled=true;$('uploadOpen').title='Uploads are disabled while your account is in watch-only mode.'}else{banner.classList.add('hidden');$('uploadOpen').disabled=false;$('uploadOpen').title=''}}return moderationState}
+function isWatchOnly(){return moderationState.mode==='watch_only'}
+async function checkContentWithAI(kind,content){if(!user)throw new Error('Sign in first.');await refreshModerationState();if(isWatchOnly())throw new Error('Your account is in watch-only mode. You can still watch videos, but you cannot comment or upload.');const{data,error}=await db.functions.invoke('moderate-content',{body:{kind,content}});if(error)throw new Error(error.message||'AI moderation is temporarily unavailable.');if(data?.watchOnly){moderationState.mode='watch_only';moderationState.reason=data.reason||'Repeated community-guideline violations';await refreshModerationState()}if(!data?.allowed){throw new Error(data?.message||'This content was blocked by Loobee moderation. You can edit it or appeal if you think this is a mistake.')}return data}
 
-$("generate").addEventListener("click", () => {
-  if (!inspected) {
-    status("sqlStatus", "Inspect the database successfully before generating a repair.", false);
-    return;
+function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function showModal(id,open=true){$(id).classList.toggle("open",open)}
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>showModal(b.dataset.close,false));document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)showModal(m.id,false)}));
+function setUser(u){user=u||null;$('authOpen').textContent=user?(user.email?.split('@')[0]||'Account'):'Sign in';$('profileOpen').classList.toggle('hidden',!user);$('adminOpen').classList.toggle('hidden',user?.email?.toLowerCase()!=='lowvr81@gmail.com');$('headerUsername').textContent=user?(user.user_metadata?.user_name||user.user_metadata?.name||user.email?.split('@')[0]||'Profile'):'Profile';$('headerAvatar').textContent=($('headerUsername').textContent[0]||'?').toUpperCase()}
+$('authOpen').onclick=()=>{if(user){if(confirm('Sign out of Loobee?'))db.auth.signOut()}else showModal('authModal')};
+$('profileOpen').onclick=()=>{if(!user){showModal('authModal');msg('authMessage','You need to sign in to view your profile.');return}openProfile(user.id)};
+$('profileBack').onclick=()=>{if(profileReturnView==='watch'&&currentVideo){$('profileView').classList.add('hidden');showWatch()}else{showProfileView(false);showBrowse();loadData()}};
+$('editProfileBtn').onclick=()=>{if(!user||user.id!==viewedProfileId)return;$('profileUsernameInput').value=profileUsernameRaw;$('profileDisplayNameInput').value=profileDisplayNameRaw;$('profileAboutInput').value=profileAboutRaw;$('profileAvatarFile').value='';$('profileBannerFile').value='';$('profileEditPanel').classList.remove('hidden')};
+$('securityOpenBtn').onclick=async()=>{if(!user){showModal('authModal');msg('authMessage','Sign in to manage account security.');return}showModal('securityModal');await refreshMfaSettings()};
+$('cancelProfileEdit').onclick=()=> $('profileEditPanel').classList.add('hidden');
+$('profileSubscribeBtn').onclick=async()=>{if(!user){showModal('authModal');msg('authMessage','You need to sign in to subscribe.');return}if(!viewedProfileId||viewedProfileId===user.id)return;const{data:old}=await db.from('subscriptions').select('subscriber_id').eq('subscriber_id',user.id).eq('channel_id',viewedProfileId).maybeSingle();const r=old?await db.from('subscriptions').delete().eq('subscriber_id',user.id).eq('channel_id',viewedProfileId):await db.from('subscriptions').insert({subscriber_id:user.id,channel_id:viewedProfileId});if(r.error){$('profileNotice').textContent='Could not update subscription: '+r.error.message;return}await openProfile(viewedProfileId)};
+let profileAboutRaw='';let profileUsernameRaw='';let profileDisplayNameRaw='';let signupMode=false;
+$('profileForm').onsubmit=async e=>{e.preventDefault();if(!user||user.id!==viewedProfileId)return;const username=$('profileUsernameInput').value.trim(),display_name=$('profileDisplayNameInput').value.trim(),about=$('profileAboutInput').value.trim();if(!/^[A-Za-z0-9_]{3,24}$/.test(username))return $('profileNotice').textContent='Username must be 3–24 characters using letters, numbers or underscores.';if(!display_name)return $('profileNotice').textContent='Enter a display name.';let avatar_url=null,banner_url=null;try{avatar_url=await uploadProfileImage($('profileAvatarFile').files[0],'avatar');banner_url=await uploadProfileImage($('profileBannerFile').files[0],'banner')}catch(err){$('profileNotice').textContent='Image upload failed: '+err.message+' (check the profile-media bucket and policies).';return}const patch={id:user.id,username,display_name,about};if(avatar_url)patch.avatar_url=avatar_url;if(banner_url)patch.banner_url=banner_url;const{error}=await db.from('profiles').upsert(patch,{onConflict:'id'});if(error){$('profileNotice').textContent='Could not save profile. Run the included profile setup SQL; '+error.message;return}profileAboutRaw=about;profileUsernameRaw=username;profileDisplayNameRaw=display_name;$('profileEditPanel').classList.add('hidden');await openProfile(user.id)};
+function setSignupMode(on){signupMode=on;$('signupFields').classList.toggle('hidden',!on);$('authSubmit').textContent=on?'Create account':'Sign in';$('signup').textContent=on?'Back to sign in':'Create account';$('password').autocomplete=on?'new-password':'current-password';msg('authMessage',on?'Choose a username and display name for your new account.':'')}
+function validateNewProfile(){const username=$('signupUsername').value.trim(),display_name=$('signupDisplayName').value.trim();if(!/^[A-Za-z0-9_]{3,24}$/.test(username)){msg('authMessage','Username must be 3–24 characters using letters, numbers or underscores.',true);return null}if(!display_name||display_name.length>40){msg('authMessage','Enter a display name up to 40 characters.',true);return null}return{username,display_name}}
+$('googleLogin').onclick=async()=>{if(!db)return msg('authMessage','Supabase is not configured.',true);$('googleLogin').disabled=true;msg('authMessage','Opening Google sign-in…');try{const{error}=await db.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname,queryParams:{prompt:'select_account'}}});if(error)throw error}catch(error){$('googleLogin').disabled=false;msg('authMessage',error.message||'Google sign-in could not start.',true)}};
+$('authForm').onsubmit=async e=>{e.preventDefault();if(!db)return;if(signupMode){const chosen=validateNewProfile();if(!chosen)return;const email=$('email').value.trim(),password=$('password').value;if(!email||password.length<6)return msg('authMessage','Enter an email and a password of at least 6 characters.',true);localStorage.setItem('loobee_pending_profile',JSON.stringify(chosen));const{error}=await db.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname,data:{username:chosen.username,display_name:chosen.display_name}}});if(error){localStorage.removeItem('loobee_pending_profile');msg('authMessage',error.message,true);return}msg('authMessage','Account created. Check your email to confirm it, then sign in.');return}const{error}=await db.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)msg('authMessage',error.message,true)};
+$('signup').onclick=()=>setSignupMode(!signupMode);
+$('uploadOpen').onclick=async()=>{if(!user){showModal('authModal');msg('authMessage','Sign in before uploading.');return}await refreshModerationState();if(isWatchOnly()){alert('Your account is in watch-only mode. You can still watch videos, but uploads and comments are disabled.');return}showModal('uploadModal')};
+$('homeLogo').onclick=()=>{history.pushState({},'',location.pathname);showBrowse();loadData()};$('backBrowse').onclick=()=>{history.pushState({},'',location.pathname);showBrowse();loadData()};
+function showProfileView(on=true){$('profileView').classList.toggle('hidden',!on)}
+function showBrowse(){ $('watchView').classList.add('hidden');$('profileView').classList.add('hidden');$('browseView').classList.remove('hidden');$('watchPlayer').onerror=null;$('watchPlayer').pause();$('watchPlayer').removeAttribute('src');$('watchPlayer').load(); }
+function showWatch(){ $('browseView').classList.add('hidden');$('profileView').classList.add('hidden');$('watchView').classList.remove('hidden'); }
+function empty(text){$('content').innerHTML=`<div class="empty">${esc(text)}</div>`}
+function shuffleVideos(items){const a=[...(items||[])];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function redirectVideoNotFound(){location.href='/loobee/404.html'}
+async function loadData(){if(!db){empty('Could not connect to Supabase. Check the project URL and publishable key.');return}$('content').innerHTML='<div class="empty">Loading Loobee…</div>';msg('status','');let q=db.from('videos').select('id,title,description,category,video_url,thumbnail_url,created_at,user_id,is_private,comments_enabled,is_short,view_count,hype_count,quality_urls,profiles(username,display_name,is_verified,is_ceo)').order('created_at',{ascending:false}).limit(100);if(category!=='All')q=q.eq('category',category);if(searchTerm)q=q.ilike('title',`%${searchTerm.replace(/[%_,]/g,' ')}%`);if(page==='myvideos'){if(!user){empty('Sign in to see your videos.');return}q=q.eq('user_id',user.id)}if(page==='subscriptions'){if(!user){empty('Sign in to see your subscriptions.');return}const{sdata,serror}=await Promise.resolve({sdata:null,serror:null});const{data:subs,error:subError}=await db.from('subscriptions').select('channel_id').eq('subscriber_id',user.id);if(subError){msg('status',subError.message,true);return}const ids=(subs||[]).map(x=>x.channel_id);if(!ids.length){empty('You have not subscribed to any channels yet.');return}q=q.in('user_id',ids)}if(page==='channels'){await loadChannels();return}if(page==='warnings'){await renderWarningsPage();return}if(page==='shorts'){q=q.eq('is_short',true)}const{data,error}=await q;if(error){msg('status','Could not load videos: '+error.message,true);$('content').innerHTML='';return}videos=shuffleVideos((data||[]).filter(v=>(!v.is_private||v.user_id===user?.id)&&(page==='shorts'?v.is_short===true:v.is_short!==true)));renderVideos(videos)}
+function renderVideos(list){$('status').textContent='';if(page==='shorts'){if(!list.length){$('content').className='';empty('Error 404 — no Shorts found. Upload a vertical video and mark it as a Short.');return}$('content').className='shorts-feed';$('content').innerHTML=list.map(v=>`<article class="short-card" data-short-card="${esc(v.id)}"><video controls playsinline preload="metadata" src="${esc(v.video_url||'')}" poster="${esc(v.thumbnail_url||'')}" aria-label="Play ${esc(v.title||'Short')}"></video><h3>${esc(v.title||'Untitled Short')}</h3><div class="meta">${esc(v.profiles?.display_name||v.profiles?.username||'Loobee creator')}${verifiedBadge(v.profiles?.is_verified)}${loobeeCeoBadge(v.profiles?.is_ceo)} · ${Number(v.view_count||0).toLocaleString()} views · 🔥 ${Number(v.hype_count||0).toLocaleString()} Hype</div><div class="feature-row"><button data-short-details="${esc(v.id)}" aria-label="Open Short details">↗ Details</button></div></article>`).join('');document.querySelectorAll('[data-short-details]').forEach(b=>b.onclick=()=>openVideo(b.dataset.shortDetails,true));document.querySelectorAll('.short-card video').forEach(player=>player.addEventListener('error',redirectVideoNotFound,{once:true}));return}$('content').className='grid';if(!list.length){empty('Error 404 — no videos found. Try another search or check back later.');return}$('content').innerHTML=list.map(v=>`<article class="video" data-video="${esc(v.id)}"><div class="thumb">${v.thumbnail_url?`<img loading="lazy" src="${esc(v.thumbnail_url)}" alt="">`:'<span>No thumbnail</span>'}<span class="play">▶</span></div><h3>${esc(v.title||'Untitled video')}${v.is_private?' 🔒':''}</h3><div class="meta"><a href="${esc(loobeeProfileUrl(v.profiles?.username||'creator'))}" data-profile-link="${esc(v.profiles?.username||'')}" class="creator-profile-link">${esc(v.profiles?.display_name||v.profiles?.username||'Loobee creator')}</a>${verifiedBadge(v.profiles?.is_verified)}${loobeeCeoBadge(v.profiles?.is_ceo)}<br>${v.created_at?new Date(v.created_at).toLocaleDateString():''} · ${Number(v.view_count||0).toLocaleString()} views · 🔥 ${Number(v.hype_count||0).toLocaleString()}</div></article>`).join('');document.querySelectorAll('[data-video]').forEach(el=>el.onclick=()=>openVideo(el.dataset.video,true))}
+async function loadChannels(){const{data,error}=await db.from('profiles').select('id,username,display_name,created_at,is_verified,is_ceo').order('created_at',{ascending:false}).limit(100);if(error){msg('status',error.message,true);return}if(!data?.length){empty('No channels found yet.');return}$('content').innerHTML=data.map(p=>`<div class="channel-card"><div class="avatar">${esc((p.username||'?').slice(0,1).toUpperCase())}</div><h3>${esc(p.display_name||p.username||'Loobee creator')}${verifiedBadge(p.is_verified)}${loobeeCeoBadge(p.is_ceo)}</h3><p class="meta">Loobee channel</p><button data-channel="${esc(p.id)}">View videos</button></div>`).join('');document.querySelectorAll('[data-channel]').forEach(b=>b.onclick=()=>openProfile(b.dataset.channel,'browse'))}
+document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{page=b.dataset.page;category='All';searchTerm='';$('searchInput').value='';$('chips').classList.remove('hidden');document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('[data-category]').forEach(x=>x.classList.toggle('active',x.dataset.category==='All'));$('pageTitle').textContent=({home:'Explore Loobee',channels:'Channels',subscriptions:'Subscriptions',myvideos:'My videos',shorts:'Loobee Shorts',warnings:'Account warnings'})[page]||'Loobee';$('pageSubtitle').textContent=page==='channels'?'Discover Loobee creators.':'Videos uploaded by the Loobee community.';loadData()});
+document.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{category=b.dataset.category;page='home';document.querySelectorAll('[data-category]').forEach(x=>x.classList.toggle('active',x===b));loadData()});$('searchForm').onsubmit=e=>{e.preventDefault();searchTerm=$('searchInput').value.trim();page='home';loadData()};
+function configureVideoQuality(v){const sel=$('qualitySelect');if(!sel)return;sel.replaceChildren();const variants=v.quality_urls&&typeof v.quality_urls==='object'?v.quality_urls:{};const options=[['auto','Auto / Original',true]];for(const [key,label] of [['144p','144p'],['240p','240p'],['360p','360p'],['480p','480p'],['720p','720p HD'],['1080p','1080p Full HD'],['1440p','1440p QHD / 2K'],['2160p','2160p 4K']])options.push([key,label,typeof variants[key]==='string'&&!!variants[key]]);for(const [value,label,available] of options){const o=document.createElement('option');o.value=value;o.textContent=available?label:label+' · not uploaded';o.disabled=!available;o.title=available?'Switch to this uploaded video version':'This video does not have this quality version uploaded';sel.append(o)}sel.value='auto';sel.disabled=false;sel.onchange=()=>{const target=sel.value==='auto'?v.video_url:variants[sel.value];if(!target)return;const player=$('watchPlayer'),wasPlaying=!player.paused,oldTime=player.currentTime;player.src=target;player.load();player.addEventListener('loadedmetadata',function restore(){player.removeEventListener('loadedmetadata',restore);try{player.currentTime=oldTime}catch{}if(wasPlaying)player.play().catch(()=>{})});$('qualityInfo').textContent='Quality: '+(sel.value==='auto'?'Auto / original upload':sel.options[sel.selectedIndex].text)+' · quality changes only when that version exists.'};$('qualityInfo').textContent='Choose Auto or an uploaded version. Greyed-out qualities need to be uploaded first.'}
+async function openVideo(id,push){if(!db)return;const{data:v,error}=await db.from('videos').select('id,title,description,category,video_url,thumbnail_url,created_at,user_id,is_private,comments_enabled,is_short,view_count,hype_count,quality_urls,profiles(username,display_name,is_verified,is_ceo)').eq('id',id).maybeSingle();if(error||!v){redirectVideoNotFound();return}if(v.is_private&&v.user_id!==user?.id){showBrowse();msg('status','This video is private. Sign in as its creator to view it.',true);history.pushState({},'',location.pathname);return}currentVideo=v;showWatch();if(push)history.pushState({},'','?v='+encodeURIComponent(v.id));$('watchTitle').textContent=v.title||'Untitled video';$('watchDescription').textContent=v.description||'No description provided.';$('watchChannel').textContent=v.profiles?.display_name||v.profiles?.username||'Loobee creator';$('watchAvatar').textContent=($('watchChannel').textContent[0]||'L').toUpperCase();$('watchChannel').style.cursor='pointer';$('watchChannel').onclick=()=>openProfile(v.user_id,'watch');$('watchAvatar').style.cursor='pointer';$('watchAvatar').onclick=()=>openProfile(v.user_id,'watch');$('watchStats').textContent=(v.created_at?new Date(v.created_at).toLocaleDateString():'Loobee video')+' · '+Number(v.view_count||0).toLocaleString()+' views'+(v.is_short?' · SHORT':'');$('watchPlayer').poster=v.thumbnail_url||'';$('watchPlayer').onerror=redirectVideoNotFound;$('watchPlayer').src=v.video_url||'';$('watchPlayer').load();$('watchNotice').textContent='';configureVideoQuality(v);$('watchPlayer').play().catch(()=>{$('watchNotice').textContent='Press Play if your browser blocks automatic playback.'});$('creatorTools').classList.toggle('hidden',!user||user.id!==v.user_id);$('subscribeBtn').classList.toggle('hidden',!user||user.id===v.user_id);commentsEnabled=v.comments_enabled!==false;$('toggleCommentsBtn').textContent=commentsEnabled?'Disable comments':'Enable comments';$('togglePrivateBtn').textContent=v.is_private?'Make public':'Make private';$('deleteVideoBtn').classList.toggle('hidden',!user||user.id!==v.user_id);$('hypeCount').textContent=Number(v.hype_count||0).toLocaleString();$('qualityInfo').textContent='Quality: original upload'+(v.is_short?' · Short format':'');await Promise.all([loadReactions(),loadComments(),loadSubscription(),loadRecommendations()]);countViewOnce(v.id)}
+async function loadReactions(){const{data,error}=await db.from('video_reactions').select('user_id,reaction').eq('video_id',currentVideo.id);if(error){$('watchNotice').textContent='Could not load reactions: '+error.message;return}const rows=data||[];$('likeCount').textContent=rows.filter(x=>x.reaction==='like').length.toLocaleString();$('dislikeCount').textContent=rows.filter(x=>x.reaction==='dislike').length.toLocaleString();const mine=rows.find(x=>x.user_id===user?.id);$('likeBtn').style.background=mine?.reaction==='like'?'#59303a':'';$('dislikeBtn').style.background=mine?.reaction==='dislike'?'#59303a':''}
+async function react(type){if(!user){showModal('authModal');msg('authMessage','You need to sign in to like or dislike videos.');return}const{data:old,error:e}=await db.from('video_reactions').select('reaction').eq('video_id',currentVideo.id).eq('user_id',user.id).maybeSingle();if(e){$('watchNotice').textContent=e.message;return}let result;if(old?.reaction===type)result=await db.from('video_reactions').delete().eq('video_id',currentVideo.id).eq('user_id',user.id);else result=await db.from('video_reactions').upsert({video_id:currentVideo.id,user_id:user.id,reaction:type},{onConflict:'video_id,user_id'});if(result.error){$('watchNotice').textContent=result.error.message;return}await loadReactions()}
+$('likeBtn').onclick=()=>react('like');$('dislikeBtn').onclick=()=>react('dislike');
+async function loadSubscription(){if(!user||!currentVideo)return;$('subscribeBtn').classList.remove('hidden');const{count,error}=await db.from('subscriptions').select('*',{count:'exact',head:true}).eq('channel_id',currentVideo.user_id);$('watchSubs').textContent=!error?`${count||0} subscribers`:'';const{data}=await db.from('subscriptions').select('subscriber_id').eq('subscriber_id',user.id).eq('channel_id',currentVideo.user_id).maybeSingle();$('subscribeBtn').textContent=data?'Subscribed':'Subscribe'}
+$('subscribeBtn').onclick=async()=>{if(!user){showModal('authModal');msg('authMessage','You need to sign in to subscribe.');return}const{data:old}=await db.from('subscriptions').select('subscriber_id').eq('subscriber_id',user.id).eq('channel_id',currentVideo.user_id).maybeSingle();const r=old?await db.from('subscriptions').delete().eq('subscriber_id',user.id).eq('channel_id',currentVideo.user_id):await db.from('subscriptions').insert({subscriber_id:user.id,channel_id:currentVideo.user_id});if(r.error){$('watchNotice').textContent=r.error.message;return}await loadSubscription()};
+async function loadComments(){if(currentVideo.comments_enabled===false){$('commentArea').textContent='The creator has disabled comments.';$('commentCount').textContent='';return}$('commentArea').innerHTML=(user?'<form class="comment-form" id="commentForm"><input id="commentInput" maxlength="2000" placeholder="Add a comment…" required><button class="primary" type="submit">Comment</button></form>':'<div class="profile-panel"><p>You need to sign in to comment.</p><button class="primary" id="signInToComment">Sign in</button></div>')+'<div id="comments"></div>';if(!user){$('signInToComment').onclick=()=>{showModal('authModal');msg('authMessage','You need to sign in to comment.')}}const{data,error}=await db.from('comments').select('id,content,user_id,created_at').eq('video_id',currentVideo.id).order('created_at',{ascending:false});if(error){$('comments').textContent='Could not load comments: '+error.message;return}const rows=data||[];$('commentCount').textContent=`(${rows.length})`;if(!rows.length){$('comments').innerHTML='<p class="meta">No comments yet. Be the first!</p>'}else{const ids=[...new Set(rows.map(c=>c.user_id))];const{data:people}=await db.from('profiles').select('id,username,display_name,is_ceo').in('id',ids);const names=new Map((people||[]).map(p=>[p.id,{name:p.display_name||p.username,ceo:p.is_ceo===true}]));for(const c of rows){const div=document.createElement('div');div.className='comment';const who=document.createElement('button');who.className='comment-user';const person=names.get(c.user_id);who.textContent=c.user_id===user?.id?'You':(person?.name||'User');if(person?.ceo)who.insertAdjacentHTML('afterend',loobeeCeoBadge(true));who.onclick=()=>openProfile(c.user_id,'watch');const time=document.createElement('small');time.textContent=' · '+new Date(c.created_at).toLocaleDateString();const p=document.createElement('p');p.textContent=c.content;div.append(who,time,p);if(c.user_id===user?.id||currentVideo.user_id===user?.id){const del=document.createElement('button');del.textContent='Delete';del.onclick=async()=>{const{error:deleteError}=await db.from('comments').delete().eq('id',c.id);if(deleteError)$('watchNotice').textContent=deleteError.message;else loadComments()};div.append(del)}$('comments').append(div)}}if(!$('commentForm'))return;$('commentForm').onsubmit=async e=>{e.preventDefault();if(!user){showModal('authModal');msg('authMessage','You need to sign in to comment.');return}const content=$('commentInput').value.trim();if(!content)return;try{await checkContentWithAI('comment',content)}catch(modErr){$('watchNotice').textContent=modErr.message;await refreshModerationState();return}const{error:postError}=await db.from('comments').insert({video_id:currentVideo.id,user_id:user.id,content});if(postError){$('watchNotice').textContent='Could not post comment: '+postError.message;return}$('commentInput').value='';loadComments()}}
+$('toggleCommentsBtn').onclick=async()=>{if(!user||user.id!==currentVideo.user_id)return;const value=!currentVideo.comments_enabled;const{error}=await db.from('videos').update({comments_enabled:value}).eq('id',currentVideo.id).eq('user_id',user.id);if(error){$('watchNotice').textContent='Could not change comment settings: '+error.message;return}currentVideo.comments_enabled=value;commentsEnabled=value;$('toggleCommentsBtn').textContent=value?'Disable comments':'Enable comments';await loadComments()};
+$('togglePrivateBtn').onclick=async()=>{if(!user||user.id!==currentVideo.user_id)return;const value=!currentVideo.is_private;if(value){$('watchNotice').textContent='Warning: this only marks the video private in the database. Your current public Storage URL may still work. Secure the videos bucket before relying on privacy.'}const{error}=await db.from('videos').update({is_private:value}).eq('id',currentVideo.id).eq('user_id',user.id);if(error){$('watchNotice').textContent='Could not change privacy: '+error.message;return}currentVideo.is_private=value;$('togglePrivateBtn').textContent=value?'Make public':'Make private';if(value)$('watchTitle').textContent+=' 🔒';};
+async function loadRecommendations(){const{data,error}=await db.from('videos').select('id,title,thumbnail_url,created_at,user_id,profiles(username,display_name,is_verified,is_ceo)').eq('is_private',false).neq('is_short',true).limit(100);const box=$('recommendations');box.replaceChildren();if(error||!data?.length){box.textContent='No other videos found.';return}for(const v of shuffleVideos(data.filter(x=>x.id!==currentVideo.id)).slice(0,20)){const row=document.createElement('div');row.className='recommendation';row.onclick=()=>openVideo(v.id,true);const thumb=document.createElement('div');thumb.className='thumb';if(v.thumbnail_url){const img=document.createElement('img');img.src=v.thumbnail_url;img.alt='';thumb.append(img)}else thumb.textContent='▶';const info=document.createElement('div');const title=document.createElement('h3');title.textContent=v.title||'Untitled video';const channel=document.createElement('div');channel.className='meta';channel.textContent=v.profiles?.display_name||v.profiles?.username||'Loobee creator';const date=document.createElement('div');date.className='meta';date.textContent=v.created_at?new Date(v.created_at).toLocaleDateString():'';info.append(title,channel,date);row.append(thumb,info);box.append(row)}}
+function renderAbout(text){const box=$('profileAbout');box.replaceChildren();const raw=String(text||'');if(!raw){box.textContent='No about information yet.';return}const urlPattern=/(https?:\/\/[^\s]+|www\.[^\s]+)/gi;let last=0;for(const match of raw.matchAll(urlPattern)){const index=match.index;if(index>last)box.append(document.createTextNode(raw.slice(last,index)));let value=match[0];let clean=value.replace(/[.,!?;:)]+$/,'');let trailing=value.slice(clean.length);const a=document.createElement('a');a.href=clean.startsWith('www.')?'https://'+clean:clean;a.textContent=clean;a.target='_blank';a.rel='noopener noreferrer';box.append(a,document.createTextNode(trailing));last=index+value.length}if(last<raw.length)box.append(document.createTextNode(raw.slice(last)))}
+function loobeeCeoBadge(isCeo){return isCeo?'<span class="ceo-crown" title="Loobee CEO" aria-label="Loobee CEO">♛</span><span class="ceo-badge" title="Loobee Chief Executive Officer">CEO</span>':''}
+function loobeeProfileUrl(username){const name=String(username||'').trim().replace(/^@+/, '');return name?'/loobee/@'+encodeURIComponent(name):'/loobee/'}
+async function openProfile(id,from='browse'){if(!db||!id)return;profileReturnView=from;viewedProfileId=id;$('profileNotice').textContent='Loading profile…';$('profileEditPanel').classList.add('hidden');$('profileVideos').innerHTML='<div class="empty">Loading videos…</div>';showProfileView(true);$('browseView').classList.add('hidden');$('watchView').classList.add('hidden');const{data:profile,error}=await db.from('profiles').select('id,username,display_name,about,avatar_url,banner_url,created_at,is_verified,is_ceo').eq('id',id).maybeSingle();if(error){$('profileNotice').textContent='Could not load profile: '+error.message;return}if(!profile){$('profileName').textContent='Profile not found';$('profileNotice').textContent='This user profile does not exist yet.';return}const username=profile.username||'Creator';const displayName=profile.display_name||username;profileUsernameRaw=username;profileDisplayNameRaw=displayName;profileAboutRaw=profile.about||'';$('profileName').innerHTML=esc(displayName)+verifiedBadge(profile.is_verified)+loobeeCeoBadge(profile.is_ceo);$('profileEmail').textContent='@'+username;setImageOrInitial($('profileAvatar'),profile.avatar_url,(displayName[0]||'?').toUpperCase());$('profileHero').style.setProperty('--profile-banner',profile.banner_url?`url(\"${profile.banner_url.replace(/\"/g,'')}\")`:'linear-gradient(120deg,#8b5cf633,#ff31551a)');renderAbout(profileAboutRaw);const own=!!user&&user.id===id;$('editProfileBtn').classList.toggle('hidden',!own);$('securityOpenBtn').classList.toggle('hidden',!own);$('profileSubscribeBtn').classList.toggle('hidden',own);if(!own&&user){const{data:sub}=await db.from('subscriptions').select('subscriber_id').eq('subscriber_id',user.id).eq('channel_id',id).maybeSingle();$('profileSubscribeBtn').textContent=sub?'Subscribed':'Subscribe'}const{data:items,error:videoError}=await db.from('videos').select('id,title,description,category,video_url,thumbnail_url,created_at,user_id,is_private,comments_enabled,is_short,view_count,hype_count,quality_urls,profiles(username,display_name,is_verified,is_ceo)').eq('user_id',id).order('created_at',{ascending:false});if(videoError){$('profileVideos').textContent='Could not load videos: '+videoError.message;return}const visible=shuffleVideos((items||[]).filter(v=>(!v.is_private||v.user_id===user.id)&&v.is_short!==true));if(!visible.length){$('profileVideos').innerHTML='<div class="empty">No public videos yet.</div>';return}$('profileVideos').innerHTML=visible.map(v=>`<article class="video" data-profile-video="${esc(v.id)}"><div class="thumb">${v.thumbnail_url?`<img loading="lazy" src="${esc(v.thumbnail_url)}" alt="">`:'<span>No thumbnail</span>'}<span class="play">▶</span></div><h3>${esc(v.title||'Untitled video')}${v.is_private?' 🔒':''}</h3><div class="meta">${esc(username)}${verifiedBadge(profile.is_verified)}<br>${v.created_at?new Date(v.created_at).toLocaleDateString():''} · ${Number(v.view_count||0).toLocaleString()} views · 🔥 ${Number(v.hype_count||0).toLocaleString()}</div></article>`).join('');document.querySelectorAll('[data-profile-video]').forEach(el=>el.onclick=()=>openVideo(el.dataset.profileVideo,true))}
+// Optional automatic starter subscription: if a public profile named "LowVR" exists,
+// every signed-in account is subscribed once. Users can unsubscribe at any time.
+async function ensureProfile(){if(!user||!db)return;let pending=null;try{pending=JSON.parse(localStorage.getItem('loobee_pending_profile')||'null')}catch{}const fallback=(user.user_metadata?.user_name||user.user_metadata?.preferred_username||user.email?.split('@')[0]||'creator').replace(/[^A-Za-z0-9_]/g,'_').slice(0,24);const username=(pending?.username||user.user_metadata?.username||fallback);const display_name=(pending?.display_name||user.user_metadata?.display_name||user.user_metadata?.full_name||user.user_metadata?.name||username).slice(0,40);const{data:existing}=await db.from('profiles').select('id,username,display_name').eq('id',user.id).maybeSingle();if(!existing){const{error}=await db.from('profiles').insert({id:user.id,username,display_name,about:''});if(error){console.warn('Profile creation needs setup or a unique username:',error.message);return}}else if(pending){const{error}=await db.from('profiles').update({username:pending.username,display_name:pending.display_name}).eq('id',user.id);if(error)console.warn('Could not apply selected profile names:',error.message)}if(pending)localStorage.removeItem('loobee_pending_profile');const{data:profile}=await db.from('profiles').select('username,display_name,avatar_url').eq('id',user.id).maybeSingle();if(profile){$('headerUsername').textContent=profile.display_name||profile.username||display_name;setImageOrInitial($('headerAvatar'),profile.avatar_url,($('headerUsername').textContent[0]||'?').toUpperCase())}}
+async function ensureLowVRSubscription(){if(!user||!db)return;const{data:creator,error}=await db.from('profiles').select('id').ilike('username','LowVR').limit(1).maybeSingle();if(error||!creator||creator.id===user.id)return;await db.from('subscriptions').upsert({subscriber_id:user.id,channel_id:creator.id},{onConflict:'subscriber_id,channel_id',ignoreDuplicates:true})}
+$('shareBtn').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);$('watchNotice').textContent='Video link copied!'}catch{$('watchNotice').textContent='Copy the video link from your address bar.'}};
+async function makeVideoThumbnail(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),video=document.createElement('video');video.preload='metadata';video.muted=true;video.playsInline=true;let finished=false;const cleanup=()=>{URL.revokeObjectURL(url);video.removeAttribute('src');video.load()};const fail=()=>{if(finished)return;finished=true;cleanup();reject(new Error('Could not create a thumbnail from this video. Try uploading a JPG/PNG thumbnail instead.'))};video.onerror=fail;video.onloadedmetadata=()=>{try{const target=Number.isFinite(video.duration)&&video.duration>0?Math.min(1,video.duration/2):0;video.currentTime=target}catch{fail()}};video.onseeked=()=>{if(finished)return;try{const width=video.videoWidth,height=video.videoHeight;if(!width||!height)throw new Error('Video has no readable frame.');const max=640,scale=Math.min(1,max/Math.max(width,height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Canvas is unavailable.');ctx.drawImage(video,0,0,canvas.width,canvas.height);canvas.toBlob(blob=>{if(finished)return;finished=true;cleanup();if(blob)resolve(new File([blob],'video-thumbnail.jpg',{type:'image/jpeg'}));else reject(new Error('Could not encode the video thumbnail.'))},'image/jpeg',0.82)}catch{fail()}};video.src=url;video.load()})}
+$('uploadForm').onsubmit=async e=>{e.preventDefault();if(!db||!user){msg('uploadMessage','Sign in before uploading.',true);return}const file=$('videoFile').files[0],thumb=$('thumbnailFile').files[0];if(!file||!file.type.startsWith('video/'))return msg('uploadMessage','Choose a valid video file.',true);if($('uploadPrivate').checked)return msg('uploadMessage','Private upload is disabled here until the Storage bucket is made private and signed URLs are implemented. Upload publicly for now, or configure secure private Storage first.',true);try{await checkContentWithAI('video',`Title: ${$('videoTitle').value.trim()}\nDescription: ${$('videoDescription').value.trim()}`)}catch(modErr){msg('uploadMessage',modErr.message,true);await refreshModerationState();return}if(!VIDEO_PROCESSOR_URL||!/^https:\/\//i.test(VIDEO_PROCESSOR_URL))return msg('uploadMessage','AI video processing is not connected yet. The processor must be deployed and configured before uploads can be processed.',true);if(file.size>500*1024*1024)return msg('uploadMessage','This upload is over 500 MB. Loobee’s current browser-to-processor workflow is not designed for very large files. 100 GB uploads are disabled until a server-side streaming processing pipeline is deployed and tested.',true);let uploadFile=file;msg('uploadMessage','AI scanning video frames and cutting unsafe sections… This may take a while.');try{const{data:sessionData}=await db.auth.getSession();const token=sessionData?.session?.access_token;if(!token)throw new Error('Your sign-in session expired. Sign in again.');const fd=new FormData();fd.append('video',file,file.name);const processed=await fetch(VIDEO_PROCESSOR_URL,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd});if(!processed.ok){let info={};try{info=await processed.json()}catch{}throw new Error(info.error||`AI video processing failed (${processed.status}).`)}const cleanedBlob=await processed.blob();const removed=Number(processed.headers.get('X-Loobee-Removed-Segments')||0);uploadFile=new File([cleanedBlob],file.name.replace(/\.[^.]+$/,'')+'-loobee-cleaned.mp4',{type:'video/mp4'});msg('uploadMessage',removed?`Removed ${removed} unsafe section(s). Uploading cleaned video…`:'No unsafe sections detected. Uploading scanned video…');const safe=uploadFile.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=`${user.id}/${crypto.randomUUID()}-${safe}`;await uploadWithResume('videos',path,uploadFile,'video/mp4',(sent,total)=>{const pct=total?Math.floor(sent/total*100):0;msg('uploadMessage',`Uploading cleaned video… ${pct}% (${(sent/1024/1024).toFixed(1)} / ${(total/1024/1024).toFixed(1)} MB). You can keep this page open while it uploads.`)});const videoUrl=db.storage.from('videos').getPublicUrl(path).data.publicUrl;let thumbnailUrl=null;let thumbnailToUpload=thumb||null;if(!thumbnailToUpload){msg('uploadMessage','Creating a thumbnail from the cleaned video…');thumbnailToUpload=await makeVideoThumbnail(uploadFile)}if(thumbnailToUpload){if(thumbnailToUpload.size>5*1024*1024)throw new Error('Thumbnail must be under 5 MB.');const thumbName=thumb?thumb.name:'video-thumbnail.jpg';const tp=`${user.id}/${crypto.randomUUID()}-${thumbName.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const tu=await db.storage.from('thumbnails').upload(tp,thumbnailToUpload,{upsert:false,contentType:thumbnailToUpload.type||'image/jpeg'});if(tu.error)throw tu.error;thumbnailUrl=db.storage.from('thumbnails').getPublicUrl(tp).data.publicUrl}const{error}=await db.from('videos').insert({user_id:user.id,title:$('videoTitle').value.trim(),description:$('videoDescription').value.trim(),category:$('videoCategory').value,video_url:videoUrl,thumbnail_url:thumbnailUrl,is_private:false,comments_enabled:true,is_short:$('uploadShort').checked});if(error)throw error;msg('uploadMessage','Video uploaded successfully!');$('uploadForm').reset();showModal('uploadModal',false);page='home';showBrowse();await loadData()}catch(err){msg('uploadMessage','Upload failed: '+(err.message||'Unknown error'),true)}};
+let pendingTotpFactorId=null;let pendingTotpChallengeId=null;let mfaChallengeInProgress=false;
+function securityMessage(text,isError=false){const el=$('securityMessage');el.textContent=text;el.className=isError?'error':'success'}
+async function refreshMfaSettings(){if(!db||!user)return;securityMessage('');$('securityStatus').textContent='Checking your security settings…';$('totpEnrollArea').classList.add('hidden');$('totpEnabledArea').classList.add('hidden');const{data,error}=await db.auth.mfa.listFactors();if(error){$('securityStatus').textContent='Could not check 2FA status: '+error.message;return}const verified=(data?.totp||[]).find(f=>f.status==='verified');if(verified){pendingTotpFactorId=verified.id;$('securityStatus').textContent='Authenticator two-factor authentication is enabled for this account.';$('totpEnabledArea').classList.remove('hidden')}else{$('securityStatus').textContent='Two-factor authentication is not enabled yet.';$('totpEnrollArea').classList.add('hidden');$('totpEnabledArea').classList.add('hidden')}}
+$('securityOpenBtn').addEventListener('click',()=>{});
+$('securityOpenBtn').onclick=async()=>{if(!user){showModal('authModal');msg('authMessage','Sign in to manage account security.');return}showModal('securityModal');await refreshMfaSettings()};
+$('cancelTotpBtn').onclick=async()=>{if(pendingTotpFactorId){const{error}=await db.auth.mfa.unenroll({factorId:pendingTotpFactorId});if(error)securityMessage('Could not cancel setup: '+error.message,true)}pendingTotpFactorId=null;$('totpEnrollArea').classList.add('hidden');await refreshMfaSettings()};
+$('verifyTotpBtn').onclick=async()=>{if(!pendingTotpFactorId)return securityMessage('Start setup first.',true);const code=$('totpCode').value.trim();if(!/^\d{6}$/.test(code))return securityMessage('Enter the 6-digit code from your authenticator app.',true);const challenge=await db.auth.mfa.challenge({factorId:pendingTotpFactorId});if(challenge.error)return securityMessage('Could not start verification: '+challenge.error.message,true);const result=await db.auth.mfa.verify({factorId:pendingTotpFactorId,challengeId:challenge.data.id,code});if(result.error)return securityMessage('Code was not accepted: '+result.error.message,true);$('totpCode').value='';securityMessage('2FA successfully enabled. Keep your authenticator app available.');await refreshMfaSettings()};
+$('disableTotpBtn').onclick=async()=>{if(!pendingTotpFactorId)return;const code=$('removeTotpCode').value.trim();if(!/^\d{6}$/.test(code))return securityMessage('Enter the current 6-digit authenticator code first.',true);const challenge=await db.auth.mfa.challenge({factorId:pendingTotpFactorId});if(challenge.error)return securityMessage('Could not start verification: '+challenge.error.message,true);const verified=await db.auth.mfa.verify({factorId:pendingTotpFactorId,challengeId:challenge.data.id,code});if(verified.error)return securityMessage('Code was not accepted: '+verified.error.message,true);const removed=await db.auth.mfa.unenroll({factorId:pendingTotpFactorId});if(removed.error)return securityMessage('Could not disable 2FA: '+removed.error.message,true);pendingTotpFactorId=null;$('removeTotpCode').value='';securityMessage('Two-factor authentication disabled.');await refreshMfaSettings()};
+async function beginTotpEnrollment(){if(!user)return;securityMessage('');const{data,error}=await db.auth.mfa.enroll({factorType:'totp',friendlyName:'Loobee authenticator'});if(error){securityMessage('Could not start 2FA setup: '+error.message,true);return}pendingTotpFactorId=data.id;$('totpQr').src=data.totp.qr_code;$('totpSecret').value=data.totp.secret;$('totpCode').value='';$('totpEnrollArea').classList.remove('hidden');$('totpEnabledArea').classList.add('hidden');$('securityStatus').textContent='Scan the QR code and verify a code to finish setup.'}
+async function enforceMfaIfEnrolled(sessionUser){if(!db||!sessionUser||mfaChallengeInProgress)return;try{const{data:assurance,error:assuranceError}=await db.auth.mfa.getAuthenticatorAssuranceLevel();if(assuranceError||assurance?.nextLevel!=='aal2'||assurance?.currentLevel==='aal2')return;const{data:factors}=await db.auth.mfa.listFactors();const factor=(factors?.totp||[]).find(f=>f.status==='verified');if(!factor)return;mfaChallengeInProgress=true;const{data:challenge,error}=await db.auth.mfa.challenge({factorId:factor.id});if(error){$('mfaChallengeMessage').textContent='Could not start verification: '+error.message;mfaChallengeInProgress=false;return}pendingTotpFactorId=factor.id;pendingTotpChallengeId=challenge.id;showModal('mfaChallengeModal')}catch(e){console.warn('MFA check failed',e);mfaChallengeInProgress=false}}
+$('mfaChallengeForm').onsubmit=async e=>{e.preventDefault();const code=$('mfaChallengeCode').value.trim();if(!/^\d{6}$/.test(code)){$('mfaChallengeMessage').textContent='Enter the 6-digit code.';return}const{error}=await db.auth.mfa.verify({factorId:pendingTotpFactorId,challengeId:pendingTotpChallengeId,code});if(error){$('mfaChallengeMessage').textContent='Code not accepted: '+error.message;return}$('mfaChallengeCode').value='';$('mfaChallengeMessage').textContent='Verified.';showModal('mfaChallengeModal',false);mfaChallengeInProgress=false;await loadData()};
+// Replace the enrollment button behaviour with a setup action when 2FA is off.
+const oldRefreshMfaSettings=refreshMfaSettings;
+refreshMfaSettings=async()=>{await oldRefreshMfaSettings();let button=$('startTotpBtn');if(!$('totpEnabledArea').classList.contains('hidden')){if(button)button.classList.add('hidden');return}if(!button){button=document.createElement('button');button.id='startTotpBtn';button.className='primary';button.textContent='Set up 2FA';$('totpEnrollArea').before(button);button.onclick=beginTotpEnrollment}button.classList.remove('hidden')};
+
+// Owner-only account management. Privileged actions run only on the server Edge Function.
+const OWNER_EMAIL='lowvr81@gmail.com';
+$('adminOpen').onclick=()=>{if(user?.email?.toLowerCase()!==OWNER_EMAIL)return;showModal('ownerAdminModal');$('adminSearch').value='';$('adminMessage').textContent='';searchAdminUsers()};
+$('adminSearchBtn').onclick=searchAdminUsers;$('adminRefreshBtn').onclick=searchAdminUsers;
+$('adminSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchAdminUsers()}});
+async function ownerAdminRequest(action,extra={}){if(!user||user.email?.toLowerCase()!==OWNER_EMAIL)throw new Error('Only the owner account can use this action.');const{data:{session}}=await db.auth.getSession();if(!session?.access_token)throw new Error('Your session expired. Please sign in again.');const res=await fetch(SUPABASE_URL+'/functions/v1/loobee-admin',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_KEY},body:JSON.stringify({action,...extra})});let body={};try{body=await res.json()}catch{}if(!res.ok)throw new Error(body.error||'Admin request failed ('+res.status+').');return body}
+async function searchAdminUsers(){const box=$('adminResults'),status=$('adminMessage');if(user?.email?.toLowerCase()!==OWNER_EMAIL){status.textContent='Owner access required.';return}box.replaceChildren();status.textContent='Searching accounts…';try{const result=await ownerAdminRequest('search-users',{query:$('adminSearch').value.trim()});const users=result.users||[];if(!users.length){status.textContent='No matching accounts found.';return}status.textContent=users.length+' account(s) found.';for(const account of users){const card=document.createElement('section');card.className='profile-panel';const heading=document.createElement('h3');heading.textContent=(account.display_name||account.username||'Loobee user')+(account.is_verified?' ✓':'');const details=document.createElement('p');details.className='meta';details.textContent='@'+(account.username||'unknown')+' · '+(account.email||'No email available');const actions=document.createElement('div');actions.className='feature-row';const verify=document.createElement('button');verify.className='primary';verify.textContent=account.is_verified?'Remove verified badge':'Verify creator';verify.onclick=async()=>{verify.disabled=true;try{await ownerAdminRequest('set-verified',{userId:account.id,isVerified:!account.is_verified});status.textContent='Verification updated.';await searchAdminUsers()}catch(e){status.textContent='Could not update verification: '+e.message;verify.disabled=false}};actions.append(verify);if(account.email?.toLowerCase()!==OWNER_EMAIL){const del=document.createElement('button');del.className='danger';del.textContent='Delete account';del.onclick=async()=>{const reason=prompt('Reason for deleting '+(account.email||account.username)+':','Violation of Loobee community rules');if(reason===null)return;if(!reason.trim()){alert('Please enter a reason so it can be included in the email.');return}if(!confirm('Permanently delete this account, all its videos, and related data? This cannot be undone.'))return;del.disabled=true;status.textContent='Deleting account and associated videos…';try{const out=await ownerAdminRequest('delete-user',{userId:account.id,reason:reason.trim()});status.textContent='Account deleted. '+(out.emailSent?'Deletion email sent.':'Account deleted, but email could not be confirmed: '+(out.emailError||'configure email delivery secrets.'));await searchAdminUsers()}catch(e){status.textContent='Account deletion failed: '+e.message;del.disabled=false}};actions.append(del)}card.append(heading,details,actions);box.append(card)}}catch(e){status.textContent='Admin request failed: '+e.message}}
+// If an account is removed by an administrator, react to the profile deletion and sign the user out.
+let accountRemovalChannel=null;function watchForAccountRemoval(){if(!db)return;if(accountRemovalChannel){db.removeChannel(accountRemovalChannel);accountRemovalChannel=null}if(!user)return;const targetId=user.id;accountRemovalChannel=db.channel('loobee-account-removal-'+targetId).on('postgres_changes',{event:'DELETE',schema:'public',table:'profiles'},async payload=>{if(payload.old?.id!==targetId)return;await db.auth.signOut();setUser(null);alert('Your Loobee account has been deleted. You have been signed out.');showBrowse();await loadData()}).subscribe()}
+
+async function init(){if(!db){empty('Supabase could not initialize. Check the project URL and publishable key.');return}const{data}=await db.auth.getSession();setUser(data.session?.user);if(user){await ensureProfile();await ensureLowVRSubscription();await refreshModerationState();await enforceMfaIfEnrolled(user);watchForAccountRemoval()}db.auth.onAuthStateChange(async(_event,session)=>{setUser(session?.user);if(user){await ensureProfile();await ensureLowVRSubscription();await refreshModerationState();showModal('authModal',false);await enforceMfaIfEnrolled(user);watchForAccountRemoval()}else{await refreshModerationState()}loadData()});const params=new URLSearchParams(location.search);if(params.has('v'))await openVideo(params.get('v'),false);else await loadData()}
+window.addEventListener('load',dismissIntro,{once:true});setTimeout(dismissIntro,2400);
+window.addEventListener('popstate',()=>{const id=new URLSearchParams(location.search).get('v');if(id)openVideo(id,false);else{showBrowse();loadData()}});init();
+
+// Silent live refresh: keep Loobee content current without a visible refresh button or page reload.
+let loobeeLiveChannel=null, liveRefreshTimer=null, livePollTimer=null, lastLiveRefresh=0, liveRefreshBusy=false;
+async function refreshVisibleLoobeeView(kind='poll', payload=null){
+  if(!db || document.visibilityState!=='visible' || liveRefreshBusy)return;
+  liveRefreshBusy=true;
+  try{
+    const browseVisible=!$('browseView').classList.contains('hidden');
+    const profileVisible=!$('profileView').classList.contains('hidden');
+    const watchVisible=!$('watchView').classList.contains('hidden');
+    if(browseVisible){ await loadData(); }
+    else if(profileVisible && viewedProfileId && $('profileEditPanel').classList.contains('hidden')){
+      await openProfile(viewedProfileId, profileReturnView);
+    } else if(watchVisible && currentVideo){
+      const id=currentVideo.id;
+      const {data:v,error}=await db.from('videos').select('id,title,description,category,video_url,thumbnail_url,created_at,user_id,is_private,comments_enabled,is_short,view_count,hype_count,quality_urls,profiles(username,display_name,is_verified,is_ceo)').eq('id',id).maybeSingle();
+      if(error || !v){redirectVideoNotFound();return;}
+      if(v.is_private && v.user_id!==user?.id){history.pushState({},'',location.pathname);showBrowse();await loadData();msg('status','This video is now private.');return;}
+      const sourceChanged=v.video_url!==currentVideo.video_url;
+      currentVideo=v;
+      $('watchTitle').textContent=v.title||'Untitled video';
+      $('watchDescription').textContent=v.description||'No description provided.';
+      $('watchChannel').textContent=v.profiles?.display_name||v.profiles?.username||'Loobee creator';
+      $('watchStats').textContent=(v.created_at?new Date(v.created_at).toLocaleDateString():'Loobee video')+' · '+Number(v.view_count||0).toLocaleString()+' views'+(v.is_short?' · SHORT':'');
+      $('watchPlayer').poster=v.thumbnail_url||'';
+      $('hypeCount').textContent=Number(v.hype_count||0).toLocaleString();
+      $('toggleCommentsBtn').textContent=v.comments_enabled===false?'Enable comments':'Disable comments';
+      $('togglePrivateBtn').textContent=v.is_private?'Make public':'Make private';
+      if(sourceChanged){$('watchPlayer').src=v.video_url||'';$('watchPlayer').load();}
+      await Promise.all([loadReactions(),loadComments(),loadSubscription(),loadRecommendations()]);
+    }
+    lastLiveRefresh=Date.now();
+  }catch(e){console.warn('Loobee background refresh failed:',e)}
+  finally{liveRefreshBusy=false;}
+}
+function scheduleLiveRefresh(kind, payload){
+  if(liveRefreshTimer)clearTimeout(liveRefreshTimer);
+  liveRefreshTimer=setTimeout(()=>{liveRefreshTimer=null;refreshVisibleLoobeeView(kind,payload)},400);
+}
+function setupLoobeeRealtime(){
+  if(!db || loobeeLiveChannel)return;
+  loobeeLiveChannel=db.channel('loobee-live-updates')
+    .on('postgres_changes',{event:'*',schema:'public',table:'videos'},payload=>scheduleLiveRefresh('videos',payload))
+    .on('postgres_changes',{event:'*',schema:'public',table:'profiles'},payload=>scheduleLiveRefresh('profiles',payload))
+    .on('postgres_changes',{event:'*',schema:'public',table:'comments'},payload=>scheduleLiveRefresh('comments',payload))
+    .on('postgres_changes',{event:'*',schema:'public',table:'video_reactions'},payload=>scheduleLiveRefresh('video_reactions',payload))
+    .on('postgres_changes',{event:'*',schema:'public',table:'subscriptions'},payload=>scheduleLiveRefresh('subscriptions',payload))
+    .on('postgres_changes',{event:'*',schema:'public',table:'account_warnings'},payload=>scheduleLiveRefresh('account_warnings',payload))
+    .on('postgres_changes',{event:'*',schema:'public',table:'video_reports'},payload=>scheduleLiveRefresh('video_reports',payload))
+    .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Loobee Realtime unavailable; silent polling will continue.',status);});
+  // Fallback: refresh the currently visible section every 20 seconds. No reload, no refresh icon, no page flash.
+  if(livePollTimer)clearInterval(livePollTimer);
+  livePollTimer=setInterval(()=>{
+    if(document.visibilityState!=='visible')return;
+    if(Date.now()-lastLiveRefresh<15000)return;
+    refreshVisibleLoobeeView('poll');
+  },20000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && Date.now()-lastLiveRefresh>15000)refreshVisibleLoobeeView('visible')});
+}
+setupLoobeeRealtime();
+
+// Loobee feature pack: moderation, Shorts, Hype, fullscreen, views and account tools.
+async function countViewOnce(videoId){if(!db||!videoId)return;const key='loobee_viewed_'+videoId;if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1');const{data,error}=await db.rpc('loobee_count_view',{p_video_id:videoId});if(!error&&typeof data==='number'&&currentVideo?.id===videoId){currentVideo.view_count=data;$('watchStats').textContent=(currentVideo.created_at?new Date(currentVideo.created_at).toLocaleDateString():'Loobee video')+' · '+Number(data).toLocaleString()+' views'+(currentVideo.is_short?' · SHORT':'')}}
+$('fullscreenBtn').onclick=async()=>{const box=$('watchPlayer');try{if(document.fullscreenElement)await document.exitFullscreen();else if(box.requestFullscreen)await box.requestFullscreen();else if(box.webkitEnterFullscreen)box.webkitEnterFullscreen();}catch(e){$('watchNotice').textContent='Fullscreen is not available in this browser.'}};
+$('hypeBtn').onclick=async()=>{if(!user){showModal('authModal');msg('authMessage','Sign in to Hype a video.');return}if(!currentVideo)return;const{data,error}=await db.rpc('loobee_hype_video',{p_video_id:currentVideo.id});if(error){$('watchNotice').textContent='Hype could not be saved. Run the Loobee feature SQL migration first. '+error.message;return}const count=Number(data??0);currentVideo.hype_count=count;$('hypeCount').textContent=count.toLocaleString();$('watchNotice').textContent='🔥 Hype added! Each account can Hype a video once.'};
+$('reportBtn').onclick=()=>{if(!user){showModal('authModal');msg('authMessage','Sign in to report a video.');return}if(!currentVideo)return;showModal('reportModal');$('reportMessage').textContent=''};
+$('submitReportBtn').onclick=async()=>{if(!user||!currentVideo)return;const reason=$('reportReason').value,details=$('reportDetails').value.trim();const{error}=await db.from('video_reports').insert({video_id:currentVideo.id,reporter_id:user.id,reason,details});if(error){$('reportMessage').textContent='Could not submit report. Run the Loobee feature SQL migration first. '+error.message;return}$('reportMessage').textContent='Report submitted. Thank you for helping keep Loobee safe.';$('reportDetails').value='';setTimeout(()=>showModal('reportModal',false),1200)};
+$('deleteVideoBtn').onclick=async()=>{if(!user||!currentVideo||user.id!==currentVideo.user_id)return;if(!confirm('Permanently delete this video from Loobee? This cannot be undone.'))return;const video=currentVideo;try{const{error}=await db.from('videos').delete().eq('id',video.id).eq('user_id',user.id);if(error)throw error;for(const [bucket,url] of [['videos',video.video_url],['thumbnails',video.thumbnail_url]]){if(!url)continue;const marker='/object/public/'+bucket+'/';const i=url.indexOf(marker);if(i>=0){const path=decodeURIComponent(url.slice(i+marker.length).split('?')[0]);await db.storage.from(bucket).remove([path])}}$('watchNotice').textContent='Video deleted.';currentVideo=null;history.pushState({},'',location.pathname);showBrowse();await loadData()}catch(e){$('watchNotice').textContent='Could not delete video: '+e.message}};
+$('accountToolsBtn').onclick=()=>{showModal('accountToolsModal');$('accountToolsMessage').textContent='';loadAccountWarnings();const admin=user?.email?.toLowerCase()==='lowvr81@gmail.com';$('adminModerationPanel').classList.toggle('hidden',!admin);if(admin)loadAdminReports()};
+$('loadWarningsBtn').onclick=loadAccountWarnings;
+$('refreshReportsBtn').onclick=loadAdminReports;
+async function loadAdminReports(){const box=$('adminReports');if(!user||user.email?.toLowerCase()!=='lowvr81@gmail.com'){box.textContent='Admin access required.';return}box.textContent='Loading reports…';const{data,error}=await db.from('video_reports').select('id,video_id,reporter_id,reason,details,status,created_at').order('created_at',{ascending:false}).limit(100);if(error){box.textContent='Could not load reports: '+error.message;return}if(!data?.length){box.textContent='No reports to review.';return}box.replaceChildren();for(const r of data){const card=document.createElement('div');card.className='warning-card';const title=document.createElement('strong');title.textContent=`${r.reason} · ${r.status}`;const details=document.createElement('p');details.textContent=r.details||'No details provided.';const meta=document.createElement('small');meta.textContent=new Date(r.created_at).toLocaleString()+' · Video ID '+r.video_id;const row=document.createElement('div');row.className='feature-row';const reviewed=document.createElement('button');reviewed.textContent='Mark reviewed';reviewed.onclick=async()=>{const{error}=await db.from('video_reports').update({status:'reviewing'}).eq('id',r.id);if(error)alert('Could not update report: '+error.message);else loadAdminReports()};const dismiss=document.createElement('button');dismiss.textContent='Dismiss report';dismiss.onclick=async()=>{const{error}=await db.from('video_reports').update({status:'dismissed'}).eq('id',r.id);if(error)alert('Could not dismiss report: '+error.message);else loadAdminReports()};const warn=document.createElement('button');warn.textContent='Warn video creator';warn.onclick=async()=>{const{data:v,error:ve}=await db.from('videos').select('user_id,title').eq('id',r.video_id).maybeSingle();if(ve||!v){alert('Video or creator not found.');return}const reason='Reported video: '+r.reason;const detailsText=`A video you uploaded was reported. Video: ${v.title||r.video_id}. Please review Loobee community rules. Report details: ${r.details||'None supplied.'}`;const{error}=await db.from('account_warnings').insert({user_id:v.user_id,admin_email:'lowvr81@gmail.com',reason,details:detailsText});if(error)alert('Could not issue warning: '+error.message);else alert('Warning issued to the video creator.')};row.append(reviewed,dismiss,warn);card.append(title,details,meta,row);box.append(card)}}
+
+async function loadAccountWarnings(){const box=$('accountWarnings');if(!user){box.textContent='Sign in to view warnings.';return}box.textContent='Loading warnings…';const{data,error}=await db.from('account_warnings').select('id,reason,details,created_at').eq('user_id',user.id).order('created_at',{ascending:false});if(error){box.textContent='Warnings are unavailable until the SQL migration is run: '+error.message;return}if(!data?.length){box.textContent='No account warnings.';return}box.replaceChildren();for(const w of data){const el=document.createElement('div');el.className='warning-card';const title=document.createElement('strong');title.textContent=w.reason||'Account warning';const body=document.createElement('p');body.textContent=w.details||'No extra details provided.';const date=document.createElement('small');date.textContent=new Date(w.created_at).toLocaleString();el.append(title,body,date);box.append(el)}}
+async function renderWarningsPage(){if(!user){empty('Sign in to view your account warnings.');return}$('content').className='';$('content').innerHTML='<div class="profile-panel"><h2>Your account warnings</h2><div id="warningPageList">Loading…</div></div>';const{data,error}=await db.from('account_warnings').select('id,reason,details,created_at').eq('user_id',user.id).order('created_at',{ascending:false});const box=$('warningPageList');if(error){box.textContent='Could not load warnings. Run the feature SQL migration first: '+error.message;return}if(!data?.length){box.textContent='No account warnings. Keep following Loobee community rules.';return}box.replaceChildren();for(const w of data){const el=document.createElement('div');el.className='warning-card';const h=document.createElement('strong');h.textContent=w.reason||'Account warning';const p=document.createElement('p');p.textContent=w.details||'';const d=document.createElement('small');d.textContent=new Date(w.created_at).toLocaleString();el.append(h,p,d);box.append(el)}}
+$('deleteAccountBtn').onclick=async()=>{if(!user)return;const box=$('accountToolsMessage');if($('deleteAccountConfirm').value!=='DELETE'){box.textContent='Type DELETE exactly to confirm.';return}if(!confirm('This permanently deletes your Loobee account. Continue?'))return;box.textContent='Requesting secure account deletion…';const{data:{session}}=await db.auth.getSession();const{data,error}=await db.functions.invoke('delete-account',{headers:{Authorization:'Bearer '+session.access_token},body:{confirmation:'DELETE'}});if(error||data?.error){box.textContent='Account deletion did not complete. Deploy the included Supabase Edge Function and try again. '+(error?.message||data?.error||'');return}await db.auth.signOut();showModal('accountToolsModal',false);showBrowse();await loadData();alert('Your Loobee account deletion request completed.')};
+// Show account tools only on the owner's profile, without exposing email addresses publicly.
+const originalOpenProfile=openProfile;openProfile=async function(id,from='browse'){await originalOpenProfile(id,from);if(user&&id===user.id)$('accountToolsBtn').classList.remove('hidden');else $('accountToolsBtn').classList.add('hidden')};
+
+
+// Loobee HUD controller: custom playback controls, keyboard shortcuts and theater mode.
+(()=>{const box=document.getElementById('loobeePlayerBox'),v=document.getElementById('watchPlayer');if(!box||!v)return;const $id=id=>document.getElementById(id);const playBtn=$id('lbPlay'),center=$id('lbCenterPlay'),seek=$id('lbSeek'),current=$id('lbCurrent'),duration=$id('lbDuration'),volume=$id('lbVolume'),mute=$id('lbMute'),speed=$id('lbSpeed'),toast=$id('lbToast');let wasSeeking=false;const fmt=n=>{if(!Number.isFinite(n)||n<0)return'0:00';const s=Math.floor(n),h=Math.floor(s/3600),m=Math.floor(s%3600/60),ss=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${ss}`:`${m}:${ss}`};function update(){const d=v.duration||0,t=v.currentTime||0;current.textContent=fmt(t);duration.textContent=fmt(d);if(!wasSeeking)seek.value=d?Math.round(t/d*1000):0;seek.style.setProperty('--lb-progress',`${seek.value/10}%`);const ranges=v.buffered;if(ranges.length&&d){const end=ranges.end(ranges.length-1)/d*100;$id('lbBuffer').style.width=end+'%'}playBtn.textContent=v.paused?'▶':'Ⅱ';playBtn.setAttribute('aria-label',v.paused?'Play':'Pause');box.classList.toggle('lb-playing',!v.paused);box.classList.toggle('lb-paused',v.paused)}function toggle(){if(v.paused)v.play().catch(()=>{toast.textContent='Press play again to start this video.';flashToast()});else v.pause()}function flashToast(msg){if(msg)toast.textContent=msg;toast.classList.add('show');clearTimeout(flashToast.timer);flashToast.timer=setTimeout(()=>toast.classList.remove('show'),1100)}playBtn.addEventListener('click',e=>{e.stopPropagation();toggle()});center.addEventListener('click',e=>{e.stopPropagation();toggle()});v.addEventListener('click',toggle);v.addEventListener('play',update);v.addEventListener('pause',update);v.addEventListener('timeupdate',update);v.addEventListener('durationchange',update);v.addEventListener('progress',update);v.addEventListener('loadedmetadata',update);v.addEventListener('volumechange',()=>{mute.textContent=v.muted||v.volume===0?'🔇':'🔊';volume.value=v.muted?0:v.volume});v.addEventListener('ended',update);seek.addEventListener('input',()=>{wasSeeking=true;const pct=Number(seek.value)/1000;seek.style.setProperty('--lb-progress',`${pct*100}%`);current.textContent=fmt(pct*(v.duration||0))});seek.addEventListener('change',()=>{if(v.duration)v.currentTime=(Number(seek.value)/1000)*v.duration;wasSeeking=false;update()});volume.addEventListener('input',()=>{v.volume=Number(volume.value);v.muted=v.volume===0});mute.addEventListener('click',()=>{v.muted=!v.muted});$id('lbBack').addEventListener('click',()=>{v.currentTime=Math.max(0,(v.currentTime||0)-10);flashToast('−10 seconds')});$id('lbForward').addEventListener('click',()=>{v.currentTime=Math.min(v.duration||Infinity,(v.currentTime||0)+10);flashToast('+10 seconds')});speed.addEventListener('change',()=>{v.playbackRate=Number(speed.value);flashToast(`Playback speed ${speed.options[speed.selectedIndex].text}`)});$id('lbFullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await box.requestFullscreen()}catch{if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else flashToast('Fullscreen unavailable in this browser')}});$id('lbTheater').addEventListener('click',()=>{const layout=box.closest('.watch-layout');const on=!box.classList.contains('lb-theater');box.classList.toggle('lb-theater',on);if(layout)layout.classList.toggle('lb-theater-layout',on);$id('lbTheater').textContent=on?'▱':'▰';$id('lbTheater').title=on?'Exit theater mode':'Theater mode'});box.addEventListener('mousemove',()=>{box.classList.add('lb-controls-active')});box.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea,button'))return;let used=true;switch(e.key.toLowerCase()){case' ':case'k':toggle();break;case'arrowleft':v.currentTime=Math.max(0,v.currentTime-5);break;case'arrowright':v.currentTime=Math.min(v.duration||Infinity,v.currentTime+5);break;case'arrowup':v.volume=Math.min(1,v.volume+.05);v.muted=false;break;case'arrowdown':v.volume=Math.max(0,v.volume-.05);break;case'm':v.muted=!v.muted;break;case'f':$id('lbFullscreen').click();break;default:used=false}if(used)e.preventDefault()});document.addEventListener('keydown',e=>{if(document.getElementById('watchView').classList.contains('hidden')||e.target.matches('input,textarea,select,button,[contenteditable="true"]'))return;if([' ','k','arrowleft','arrowright','arrowup','arrowdown','m','f'].includes(e.key.toLowerCase())&&box.contains(document.activeElement)){/* handled by player focus */}});document.addEventListener('fullscreenchange',()=>{$id('lbFullscreen').textContent=document.fullscreenElement?'⛶':'⛶';$id('lbFullscreen').title=document.fullscreenElement?'Exit fullscreen':'Fullscreen'});update()})();
+
+</script>
+<script>
+// Loobee clean routes: /home, /channels, /subscriptions, /myvideos, /shorts, /warnings,
+// /watch/VIDEO_ID and /@username. Works without a separate JS file.
+(function(){
+  const routeNames={home:'Explore Loobee',channels:'Channels',subscriptions:'Subscriptions',myvideos:'My videos',shorts:'Loobee Shorts',warnings:'Account warnings'};
+  const basePath=location.pathname.startsWith('/loobee/')||location.pathname==='/loobee'?'/loobee':'';
+  function cleanPath(path){return path.replace(/\/+$/,'')||'/home'}
+  function routePath(){const fallback=new URLSearchParams(location.search).get('loobee_path');let path=fallback||decodeURI(location.pathname);if(basePath&&path.startsWith(basePath))path=path.slice(basePath.length)||'/home';return cleanPath(path)}
+  function setRoute(path,replace=false){const next=(basePath||'')+(path.startsWith('/')?path:'/'+path); if(replace)history.replaceState({loobeeRoute:true},'',next);else history.pushState({loobeeRoute:true},'',next)}
+  function pageRoute(next,replace=false){if(!routeNames[next])next='home';setRoute('/'+next,replace);page=next;category='All';searchTerm='';if($('searchInput'))$('searchInput').value='';if($('chips'))$('chips').classList.remove('hidden');document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===next));document.querySelectorAll('[data-category]').forEach(b=>b.classList.toggle('active',b.dataset.category==='All'));if($('pageTitle'))$('pageTitle').textContent=routeNames[next];if($('pageSubtitle'))$('pageSubtitle').textContent=next==='channels'?'Discover Loobee creators.':'Videos uploaded by the Loobee community.';showBrowse();loadData()}
+  const originalOpenVideo=openVideo;
+  openVideo=async function(id,push){await originalOpenVideo(id,false);if(currentVideo&&String(currentVideo.id)===String(id)){if(push)setRoute('/watch/'+encodeURIComponent(id));else if(routePath().startsWith('/watch/')){} }};
+  const originalOpenProfile=openProfile;
+  openProfile=async function(id,from='browse'){await originalOpenProfile(id,from);const handle=($('profileEmail')?.textContent||'').trim().replace(/^@/,'');if(handle&&handle!=='Profile not found'&&!$('profileView').classList.contains('hidden'))setRoute('/@'+encodeURIComponent(handle));};
+  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();pageRoute(b.dataset.page)}));
+  $('homeLogo')?.addEventListener('click',e=>{e.preventDefault();pageRoute('home')});
+  $('backBrowse')?.addEventListener('click',e=>{e.preventDefault();pageRoute('home')});
+  document.querySelectorAll('[data-category]').forEach(b=>b.addEventListener('click',()=>{setRoute('/home');page='home';category=b.dataset.category;searchTerm='';loadData()}));
+  $('searchForm')?.addEventListener('submit',e=>{e.preventDefault();const query=($('searchInput')?.value||'').trim();searchTerm=query;page='home';category='All';if($('chips'))$('chips').classList.remove('hidden');setRoute(query?'/'+encodeURIComponent(query).replace(/%20/g,'+'):'/home');loadData()});
+  // Make creator names/avatars on cards and the header link to public /@username profiles.
+  document.addEventListener('click',e=>{const el=e.target.closest('[data-channel]');if(el)return;const link=e.target.closest('[data-profile-link]');if(link){e.preventDefault();e.stopPropagation();const h=link.dataset.profileLink;if(h){setRoute('/@'+encodeURIComponent(h));goToPath()}}});
+  async function goToPath(){const path=routePath();
+    if(path.startsWith('/watch/')){const id=decodeURIComponent(path.slice('/watch/'.length));if(id){await originalOpenVideo(id,false);return}}
+    if(path.startsWith('/@')){const username=decodeURIComponent(path.slice(2)).replace(/^@/,'');if(username&&db){const {data,error}=await db.from('profiles').select('id').ilike('username',username).maybeSingle();if(!error&&data?.id){await originalOpenProfile(data.id,'browse');return}showBrowse();$('content').innerHTML='<div class="empty">404 — Loobee profile not found.</div>';return}}
+    const key=path.slice(1).toLowerCase();if(routeNames[key]){pageRoute(key,true);return}
+    if(path==='/'||path==='/index.html'){pageRoute('home',true);return}
+    // Search URLs use readable slugs, e.g. /how+to+open+a+door.
+    // GitHub Pages' 404 fallback can pass the requested path in loobee_path.
+    const id=new URLSearchParams(location.search).get('v');if(id){await originalOpenVideo(id,false);return}
+    const searchQuery=path.slice(1).replace(/\+/g,' ').trim();
+    if(searchQuery){try{searchTerm=decodeURIComponent(searchQuery)}catch{searchTerm=searchQuery}page='home';category='All';if($('searchInput'))$('searchInput').value=searchTerm;if($('chips'))$('chips').classList.remove('hidden');document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page==='home'));if($('pageTitle'))$('pageTitle').textContent='Search results';showBrowse();await loadData();return}
+    pageRoute('home',true);
   }
-
-  const extras = $("extra").value.split(",").map(s => s.trim()).filter(Boolean);
-  const modes = [...new Set([
-    ...observedModes.filter(m => m !== "(NULL)"),
-    ...extras,
-    "normal",
-    "watch_only"
-  ])];
-
-  if (modes.length === 0 || modes.some(m => m === "(NULL)")) {
-    status("sqlStatus", "Invalid mode list. Review NULL account_mode values separately.", false);
-    return;
-  }
-
-  const allowed = modes.map(quoteSql).join(", ");
-  const sql =
-`-- Loobee account_mode constraint repair
--- Generated by Loobee Database Check & Fix v${TOOL_VERSION}
--- REVIEW ALL MODES BEFORE RUNNING.
--- Browser inspection may not show every row due to RLS or the row limit.
--- This changes a constraint only; it does not update profile records.
-
-BEGIN;
-
-ALTER TABLE public.profiles
-  DROP CONSTRAINT IF EXISTS profiles_account_mode_check;
-
-ALTER TABLE public.profiles
-  ADD CONSTRAINT profiles_account_mode_check
-  CHECK (account_mode IN (${allowed}));
-
-COMMIT;
-
--- Verify the modes after reviewing and running the migration:
-SELECT account_mode, COUNT(*) AS total
-FROM public.profiles
-GROUP BY account_mode
-ORDER BY total DESC;
-`;
-
-  $("sql").value = sql;
-  status("sqlStatus",
-    "SQL generated. It preserves the observed modes plus your additions and the two standard modes. Review before running.",
-    true);
-});
-
-$("copy").addEventListener("click", async () => {
-  if (!$("sql").value.trim()) {
-    status("sqlStatus", "Generate SQL first.", false);
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText($("sql").value);
-    status("sqlStatus", "SQL copied to clipboard.", true);
-  } catch {
-    $("sql").focus();
-    $("sql").select();
-    status("sqlStatus", "Automatic copy failed. The SQL is selected; copy it manually.", false);
-  }
-});
-
-$("download").addEventListener("click", () => {
-  if (!$("sql").value.trim()) {
-    status("sqlStatus", "Generate SQL first.", false);
-    return;
-  }
-  const blob = new Blob([$ ("sql").value], {type: "text/plain;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "loobee-account-mode-review.sql";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-$("copyManual").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText($("manual").textContent);
-    status("sqlStatus", "Diagnostic query copied.", true);
-  } catch {
-    status("sqlStatus", "Select and copy the diagnostic query manually.", false);
-  }
-});
+  window.addEventListener('popstate',()=>{goToPath()});
+  // If the user opens their profile, expose its shareable /@username URL.
+  const profileButton=$('profileOpen');if(profileButton)profileButton.addEventListener('click',async()=>{if(!user)return;const {data}=await db.from('profiles').select('username').eq('id',user.id).maybeSingle();if(data?.username)setRoute('/@'+encodeURIComponent(data.username))});
+  // Add real link destinations to navigation controls while retaining their existing button styling.
+  document.querySelectorAll('[data-page]').forEach(b=>{b.setAttribute('title','Open /'+b.dataset.page);b.dataset.routeHref='/'+b.dataset.page});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',goToPath,{once:true});else setTimeout(goToPath,0);
 })();
 </script>
-</body>
-</html>
+<script>
+// Loobee System Stats: safe, read-only diagnostics; never invokes functions that change data.
+(function(){
+ const btn=document.getElementById('systemStatsOpen');
+ const modal=document.getElementById('systemStatsModal');
+ const results=document.getElementById('systemStatsResults');
+ const time=document.getElementById('systemStatsTime');
+ if(!btn||!modal||!results)return;
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ function row(name,state,detail){const color=state==='PASS'?'#86efac':state==='FAIL'?'#fda4af':'#fcd34d';return `<div style="padding:13px;margin:9px 0;border:1px solid #ffffff18;border-radius:12px;background:#ffffff05"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>${esc(name)}</strong><strong style="color:${color}">${esc(state)}</strong></div><div class="meta" style="margin-top:5px;overflow-wrap:anywhere">${esc(detail)}</div></div>`}
+ function open(){modal.classList.add('open');runChecks()}
+ btn.addEventListener('click',open);
+ modal.querySelectorAll('[data-close="systemStatsModal"]').forEach(x=>x.addEventListener('click',()=>modal.classList.remove('open')));
+ modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});
+ document.getElementById('runSystemChecks')?.addEventListener('click',runChecks);
+ async function runChecks(){
+  results.innerHTML='<div class="empty">Running safe checks…</div>';time.textContent='';const rows=[];
+  rows.push(row('Supabase JavaScript library',window.supabase?.createClient?'PASS':'FAIL',window.supabase?.createClient?'Library loaded in this browser.':'The Supabase library did not load. Check the CDN/network connection.'));
+  rows.push(row('Supabase configuration',/^https:\/\//.test(SUPABASE_URL)&&!!SUPABASE_KEY?'PASS':'FAIL',/^https:\/\//.test(SUPABASE_URL)&&!!SUPABASE_KEY?'Connection settings are configured. The project URL and key value are hidden.':'Required connection settings are missing. Check the deployment configuration.'));
+  if(!db){rows.push(row('Database connection','FAIL','Supabase client could not be created.'));results.innerHTML=rows.join('');return}
+  try{
+   const {data,error}=await db.from('videos').select('id').limit(1);
+   rows.push(row('Database / videos table',error?'FAIL':'PASS',error?`${error.message} (code ${error.code||'unknown'})`:`Query succeeded; ${data?.length?'video rows are readable':'query succeeded; no row was returned or visible under current permissions'}.`));
+  }catch(e){rows.push(row('Database / videos table','FAIL',e?.message||'Request failed.'))}
+  try{
+   const {data:{session},error}=await db.auth.getSession();
+   rows.push(row('Sign-in session',error?'FAIL':session?.access_token?'PASS':'WARN',error?error.message:session?.access_token?'A signed-in session is available.':'Not signed in. Sign in to upload videos.'));
+  }catch(e){rows.push(row('Sign-in session','FAIL',e?.message||'Could not read session.'))}
+  try{
+   // Do not rely on listBuckets(): many Supabase projects intentionally hide the bucket catalogue from anon clients.
+   // Probe each required bucket directly. An empty bucket is still a successful response.
+   const required=['videos','thumbnails','profile-media'];
+   const checks=await Promise.all(required.map(async name=>{
+    try{const {error}=await db.storage.from(name).list('',{limit:1});return {name,error:error||null};}
+    catch(error){return {name,error};}
+   }));
+   const missing=checks.filter(x=>x.error&&/bucket.*not found|not found.*bucket|bucket does not exist/i.test(x.error.message||'')).map(x=>x.name);
+   const failed=checks.filter(x=>x.error&&!missing.includes(x.name));
+   if(!missing.length&&!failed.length)rows.push(row('Storage buckets','PASS',`All required buckets responded: ${required.join(', ')}. Empty buckets are valid. This direct check does not expose the project URL or enumerate unrelated buckets.`));
+   else if(missing.length)rows.push(row('Storage buckets','WARN',`Supabase reports these buckets missing: ${missing.join(', ')}. Run Loobee-Storage-Bucket-Repair.sql in the correct project's SQL Editor, then check Storage → Buckets.`));
+   else rows.push(row('Storage buckets','WARN',`Bucket existence could not be confirmed for ${failed.map(x=>x.name).join(', ')} because Storage returned an access/network error: ${failed.map(x=>x.error?.message||'unknown error').join('; ')}. Run the setup SQL and verify Storage → Buckets in the dashboard.`));
+  }catch(e){rows.push(row('Storage bucket access','FAIL',e?.message||'Request failed.'))}
+  rows.push(row('AI video processor URL',VIDEO_PROCESSOR_URL&&/^https:\/\//i.test(VIDEO_PROCESSOR_URL)?'PASS':'FAIL',VIDEO_PROCESSOR_URL&&/^https:\/\//i.test(VIDEO_PROCESSOR_URL)?'A processor URL is configured. This does not guarantee it is reachable.':'BLOCKED: VIDEO_PROCESSOR_URL is empty. The processor cannot be deployed from this static HTML. Deploy a real video-processing backend, configure its HTTPS endpoint in the deployment, and verify it before enabling processed uploads.'));
+  // Safe OPTIONS probe only: does not invoke the Edge Function's action.
+  try{
+   const url=SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/loobee-admin';
+   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);
+   let res;try{res=await fetch(url,{method:'OPTIONS',headers:{'apikey':SUPABASE_KEY},signal:controller.signal,mode:'cors'});}finally{clearTimeout(timer)}
+   rows.push(row('Edge Function gateway (safe OPTIONS)',res.ok?'PASS':res.status===404?'FAIL':'WARN',`HTTP ${res.status}. This only checks the gateway/preflight, not the function logic. ${res.status===404?'The loobee-admin function may not be deployed at this name.':''}`));
+  }catch(e){rows.push(row('Edge Function gateway (safe OPTIONS)','WARN',`${e?.name==='AbortError'?'Timed out':e?.message||'Browser request failed'}. Browser CORS/network restrictions can prevent this check; inspect Supabase → Edge Functions → Logs.`))}
+  rows.push(row('100 GB upload support','FAIL','NOT SUPPORTED/VERIFIED by the current processing flow. The page sends the whole video to a processor and reads the processed result back into browser memory, which is unsuitable for 100 GB files. Requires an asynchronous server-side pipeline that streams/resumes storage transfers, plus verified Supabase plan/quota, processor disk/RAM/timeouts, and hosting/proxy limits. Do not advertise 100 GB uploads until a real end-to-end test passes.')); 
+  results.innerHTML=rows.join('');time.textContent='Checked '+new Date().toLocaleTimeString();
+ }
+})();
+</script>
+</body></html>
