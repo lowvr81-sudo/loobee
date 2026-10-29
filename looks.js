@@ -1,17 +1,32 @@
+/* CEO crown */
 .ceo-crown {
-  color: #fbbf24;
+  display: inline-block;
+  color: #ffd700;
+  font-size: 18px;
   margin-left: 5px;
-  font-size: 1.1em;
+  vertical-align: middle;
+  filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.65));
 }
 
+/* CEO badge */
 .ceo-badge {
   display: inline-flex;
   align-items: center;
-  margin-left: 6px;
-  padding: 2px 7px;
+  gap: 4px;
+  margin-left: 7px;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: #fbbf24;
-  color: #171717;
+  background: linear-gradient(135deg, #ffe680, #f5b800, #d99500);
+  color: #201600;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  border: 1px solid #ffdf64;
+  box-shadow: 0 0 8px rgba(255, 196, 0, 0.3);
+}
+
+/* Keep the badge aligned with usernames */
+.ceo-badge,
+.ceo-crown {
+  vertical-align: middle;
 }
