@@ -1,40 +1,42 @@
-// Loobee navigation links: /home, /channels, /@username
-const loobeeBase = "/loobee";
 
-function loobeeUrl(path) {
-  return loobeeBase + (path.startsWith("/") ? path : "/" + path);
-}
+(() => {
+  "use strict";
 
-// Give navigation buttons real URLs
-document.querySelectorAll("[data-page]").forEach(button => {
-  const pageName = button.dataset.page;
-  button.dataset.routeHref = loobeeUrl("/" + pageName);
-  button.title = "Open " + pageName;
-});
+  const BASE = "/loobee/";
+  const NOT_FOUND = "https://lowvr81-sudo.github.io/404-error-not-found/";
 
-// Navigate using the existing Loobee router
-document.addEventListener("click", event => {
-  const link = event.target.closest("[data-route-href]");
-  if (!link) return;
+  function handleLoobeeLink() {
+    const path = decodeURIComponent(location.pathname);
 
-  event.preventDefault();
+    // Redirect /channels to the profile route
+    if (path === BASE + "channels") {
+      history.replaceState({}, "", BASE + "@yourname");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      return;
+    }
 
-  const destination = link.dataset.routeHref;
-  if (!destination) return;
+    // Allow known Loobee routes
+    const validRoutes = [
+      BASE,
+      BASE + "home",
+      BASE + "channels",
+      BASE + "subscriptions",
+      BASE + "myvideos",
+      BASE + "shorts"
+    ];
 
-  const path = destination.startsWith(loobeeBase)
-    ? destination.slice(loobeeBase.length) || "/"
-    : destination;
+    // Allow profile links such as /@yourname
+    const isProfile = path.startsWith(BASE + "@") &&
+      path.length > (BASE + "@").length;
 
-  history.pushState({}, "", loobeeUrl(path));
-  goToPath();
-});
+    // Allow video links such as /watch/VIDEO_ID
+    const isVideo = path.startsWith(BASE + "watch/") &&
+      path.length > (BASE + "watch/").length;
 
-// Support browser Back and Forward
-window.addEventListener("popstate", () => {
-  goToPath();
-});
+    if (!validRoutes.includes(path) && !isProfile && !isVideo) {
+      window.location.replace(NOT_FOUND);
+    }
+  }
 
-// Create profile links with a username
-window.LoobeeProfileUrl = username =>
-  loobeeUrl("/@" + encodeURIComponent(username.replace(/^@/, "")));
+  handleLoobeeLink();
+})();
