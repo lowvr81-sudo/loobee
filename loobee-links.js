@@ -1,117 +1,40 @@
-(() => {
-  "use strict";
+// Loobee navigation links: /home, /channels, /@username
+const loobeeBase = "/loobee";
 
-  const BASE = "/loobee";
+function loobeeUrl(path) {
+  return loobeeBase + (path.startsWith("/") ? path : "/" + path);
+}
 
-  const routes = {
-    home: "/home",
-    channels: "/channels",
-    subscriptions: "/subscriptions",
-    myvideos: "/myvideos",
-    shorts: "/shorts",
-    warnings: "/warnings"
-  };
+// Give navigation buttons real URLs
+document.querySelectorAll("[data-page]").forEach(button => {
+  const pageName = button.dataset.page;
+  button.dataset.routeHref = loobeeUrl("/" + pageName);
+  button.title = "Open " + pageName;
+});
 
-  function getAppPath() {
-    const path = location.pathname;
+// Navigate using the existing Loobee router
+document.addEventListener("click", event => {
+  const link = event.target.closest("[data-route-href]");
+  if (!link) return;
 
-    if (path.startsWith(BASE + "/")) {
-      return path.slice(BASE.length);
-    }
+  event.preventDefault();
 
-    return path === BASE ? "/" : path;
-  }
+  const destination = link.dataset.routeHref;
+  if (!destination) return;
 
-  function navigate(path) {
-    const url = BASE + (path.startsWith("/") ? path : "/" + path);
-    history.pushState({}, "", url);
-    handleRoute();
-  }
+  const path = destination.startsWith(loobeeBase)
+    ? destination.slice(loobeeBase.length) || "/"
+    : destination;
 
-  function handleRoute() {
-    const path = getAppPath();
+  history.pushState({}, "", loobeeUrl(path));
+  goToPath();
+});
 
-    // Video route: /loobee/watch/VIDEO_ID
-    if (path.startsWith("/watch/")) {
-      const videoId = decodeURIComponent(path.slice(7));
+// Support browser Back and Forward
+window.addEventListener("popstate", () => {
+  goToPath();
+});
 
-      if (videoId) {
-        if (typeof window.openVideo === "function") {
-          window.openVideo(videoId);
-        } else {
-          document.dispatchEvent(
-            new CustomEvent("loobee:navigate", {
-              detail: { type: "video", id: videoId, path }
-            })
-          );
-        }
-      }
-      return;
-    }
-
-    // Profile route: /loobee/@username
-    if (path.startsWith("/@")) {
-      const username = decodeURIComponent(path.slice(2));
-
-      document.dispatchEvent(
-        new CustomEvent("loobee:navigate", {
-          detail: { type: "profile", username, path }
-        })
-      );
-      return;
-    }
-
-    const page = path.replace(/^\/+/, "").toLowerCase() || "home";
-
-    if (routes[page]) {
-      document.dispatchEvent(
-        new CustomEvent("loobee:navigate", {
-          detail: { type: "page", page, path }
-        })
-      );
-    }
-  }
-
-  // Navigation buttons using data-page="home", "channels", etc.
-  document.addEventListener("click", event => {
-    const button = event.target.closest("[data-page]");
-
-    if (button && routes[button.dataset.page]) {
-      event.preventDefault();
-      navigate(routes[button.dataset.page]);
-      return;
-    }
-
-    // Links using href="/loobee/channels" or similar.
-    const link = event.target.closest("a[href]");
-    if (!link) return;
-
-    const url = new URL(link.href, location.origin);
-
-    if (url.origin !== location.origin) return;
-    if (!url.pathname.startsWith(BASE + "/")) return;
-
-    event.preventDefault();
-    history.pushState({}, "", url.pathname + url.search + url.hash);
-    handleRoute();
-  });
-
-  // Browser back and forward.
-  window.addEventListener("popstate", handleRoute);
-
-  // Make the helper available to the rest of the app.
-  window.LoobeeLinks = {
-    navigate,
-    handleRoute,
-    routes
-  };
-
-  // Start at the current URL.
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", handleRoute, {
-      once: true
-    });
-  } else {
-    handleRoute();
-  }
-})();
+// Create profile links with a username
+window.LoobeeProfileUrl = username =>
+  loobeeUrl("/@" + encodeURIComponent(username.replace(/^@/, "")));
