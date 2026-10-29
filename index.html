@@ -371,7 +371,9 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
   document.querySelectorAll('[data-page]').forEach(b=>{b.setAttribute('title','Open /'+b.dataset.page);b.dataset.routeHref='/'+b.dataset.page});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',goToPath,{once:true});else setTimeout(goToPath,0);
 
-  <script src="loobee-links.js" defer></script>
+<script src="./looks.js?v=2.0.0"></script>
+<script src="./loobee-links.js?v=1.0.0"></script>
+  
 })();
 </script>
 </body></html>
