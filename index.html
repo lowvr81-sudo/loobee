@@ -370,6 +370,8 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
   // Add real link destinations to navigation controls while retaining their existing button styling.
   document.querySelectorAll('[data-page]').forEach(b=>{b.setAttribute('title','Open /'+b.dataset.page);b.dataset.routeHref='/'+b.dataset.page});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',goToPath,{once:true});else setTimeout(goToPath,0);
+
+  <script src="loobee-links.js" defer></script>
 })();
 </script>
 </body></html>
