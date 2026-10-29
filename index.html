@@ -458,15 +458,29 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
    else if(missing.length)rows.push(row('Storage buckets','WARN',`Supabase reports these buckets missing: ${missing.join(', ')}. Run Loobee-Storage-Bucket-Repair.sql in the correct project's SQL Editor, then check Storage → Buckets.`));
    else rows.push(row('Storage buckets','WARN',`Bucket existence could not be confirmed for ${failed.map(x=>x.name).join(', ')} because Storage returned an access/network error: ${failed.map(x=>x.error?.message||'unknown error').join('; ')}. Run the setup SQL and verify Storage → Buckets in the dashboard.`));
   }catch(e){rows.push(row('Storage bucket access','FAIL',e?.message||'Request failed.'))}
-  rows.push(row('AI video processor URL',VIDEO_PROCESSOR_URL&&/^https:\/\//i.test(VIDEO_PROCESSOR_URL)?'PASS':'FAIL',VIDEO_PROCESSOR_URL&&/^https:\/\//i.test(VIDEO_PROCESSOR_URL)?'A processor URL is configured. This does not guarantee it is reachable.':'BLOCKED: VIDEO_PROCESSOR_URL is empty. The processor cannot be deployed from this static HTML. Deploy a real video-processing backend, configure its HTTPS endpoint in the deployment, and verify it before enabling processed uploads.'));
-  // Safe OPTIONS probe only: does not invoke the Edge Function's action.
-  try{
-   const url=SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/loobee-admin';
-   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);
-   let res;try{res=await fetch(url,{method:'OPTIONS',headers:{'apikey':SUPABASE_KEY},signal:controller.signal,mode:'cors'});}finally{clearTimeout(timer)}
-   rows.push(row('Edge Function gateway (safe OPTIONS)',res.ok?'PASS':res.status===404?'FAIL':'WARN',`HTTP ${res.status}. This only checks the gateway/preflight, not the function logic. ${res.status===404?'The loobee-admin function may not be deployed at this name.':''}`));
-  }catch(e){rows.push(row('Edge Function gateway (safe OPTIONS)','WARN',`${e?.name==='AbortError'?'Timed out':e?.message||'Browser request failed'}. Browser CORS/network restrictions can prevent this check; inspect Supabase → Edge Functions → Logs.`))}
-  rows.push(row('100 GB upload support','FAIL','NOT SUPPORTED/VERIFIED by the current processing flow. The page sends the whole video to a processor and reads the processed result back into browser memory, which is unsuitable for 100 GB files. Requires an asynchronous server-side pipeline that streams/resumes storage transfers, plus verified Supabase plan/quota, processor disk/RAM/timeouts, and hosting/proxy limits. Do not advertise 100 GB uploads until a real end-to-end test passes.')); 
+  // Check a real processor health endpoint, not just whether a URL string exists.
+  if(!VIDEO_PROCESSOR_URL||!/^https:\/\//i.test(VIDEO_PROCESSOR_URL)){
+   rows.push(row('AI video processor URL','FAIL','VIDEO_PROCESSOR_URL is empty or not HTTPS. Deploy a processor, then set this constant to its /process-video endpoint. A static HTML page cannot deploy the backend for you.'));
+  } else {
+   try {
+    const healthUrl=VIDEO_PROCESSOR_URL.replace(/\/process-video\/?$/i,'/health').replace(/\/$/,'/health');
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);let res;
+    try{res=await fetch(healthUrl,{method:'GET',signal:controller.signal,mode:'cors',cache:'no-store'});}finally{clearTimeout(timer)}
+    let health={};try{health=await res.json()}catch{}
+    const ready=res.ok&&health?.ok===true&&health?.processingEnabled===true;
+    rows.push(row('AI video processor URL',ready?'PASS':res.ok?'WARN':'FAIL',`Health endpoint HTTP ${res.status}. ${health?.message||'The endpoint did not confirm processing readiness.'} ${ready?'':'A live health endpoint alone is not enough; processing must be enabled and end-to-end tested.'}`));
+   } catch(e) { rows.push(row('AI video processor URL','FAIL',`${e?.name==='AbortError'?'Health check timed out':e?.message||'Health request failed'}. Check HTTPS, CORS, deployment status, and /health.`)); }
+  }
+  // Safe OPTIONS probes only; these do not invoke either function's action.
+  for (const fn of ['loobee-admin','loobee-moderation']) {
+   try{
+    const url=SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/'+fn;
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),7000);let res;
+    try{res=await fetch(url,{method:'OPTIONS',headers:{'apikey':SUPABASE_KEY},signal:controller.signal,mode:'cors',cache:'no-store'});}finally{clearTimeout(timer)}
+    rows.push(row(`Edge Function gateway: ${fn} (safe OPTIONS)`,res.ok?'PASS':res.status===404?'FAIL':'WARN',`HTTP ${res.status}. This only checks gateway/preflight, not function logic. ${res.status===404?`The ${fn} function may not be deployed under this name.`:''}`));
+   }catch(e){rows.push(row(`Edge Function gateway: ${fn} (safe OPTIONS)`,'WARN',`${e?.name==='AbortError'?'Timed out':e?.message||'Browser request failed'}. Browser CORS/network restrictions can affect this check; inspect Supabase → Edge Functions → Logs.`))}
+  }
+  rows.push(row('100 GB upload support','FAIL','NOT SUPPORTED/VERIFIED. This page still sends a complete video to a synchronous processor and reads the processed result into browser memory, and the current upload flow caps files at 500 MB. 100 GB needs resumable direct-to-storage upload plus an asynchronous server-side job/worker and verified plan, quota, disk, time, and end-to-end limits. Keep this disabled until a full-size test succeeds.'));
   results.innerHTML=rows.join('');time.textContent='Checked '+new Date().toLocaleTimeString();
  }
 })();
