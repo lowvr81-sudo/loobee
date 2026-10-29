@@ -370,7 +370,7 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
   $('homeLogo')?.addEventListener('click',e=>{e.preventDefault();pageRoute('home')});
   $('backBrowse')?.addEventListener('click',e=>{e.preventDefault();pageRoute('home')});
   document.querySelectorAll('[data-category]').forEach(b=>b.addEventListener('click',()=>{setRoute('/home');page='home';category=b.dataset.category;searchTerm='';loadData()}));
-  $('searchForm')?.addEventListener('submit',()=>setRoute('/home'));
+  $('searchForm')?.addEventListener('submit',e=>{e.preventDefault();const query=($('searchInput')?.value||'').trim();searchTerm=query;page='home';category='All';if($('chips'))$('chips').classList.remove('hidden');setRoute(query?'/'+encodeURIComponent(query).replace(/%20/g,'+'):'/home');loadData()});
   // Make creator names/avatars on cards and the header link to public /@username profiles.
   document.addEventListener('click',e=>{const el=e.target.closest('[data-channel]');if(el)return;const link=e.target.closest('[data-profile-link]');if(link){e.preventDefault();e.stopPropagation();const h=link.dataset.profileLink;if(h){setRoute('/@'+encodeURIComponent(h));goToPath()}}});
   async function goToPath(){const path=routePath();
@@ -378,8 +378,11 @@ const originalOpenProfile=openProfile;openProfile=async function(id,from='browse
     if(path.startsWith('/@')){const username=decodeURIComponent(path.slice(2)).replace(/^@/,'');if(username&&db){const {data,error}=await db.from('profiles').select('id').ilike('username',username).maybeSingle();if(!error&&data?.id){await originalOpenProfile(data.id,'browse');return}showBrowse();$('content').innerHTML='<div class="empty">404 — Loobee profile not found.</div>';return}}
     const key=path.slice(1).toLowerCase();if(routeNames[key]){pageRoute(key,true);return}
     if(path==='/'||path==='/index.html'){pageRoute('home',true);return}
-    // Query-string video links from older Loobee versions still work.
+    // Search URLs use readable slugs, e.g. /how+to+open+a+door.
+    // GitHub Pages' 404 fallback can pass the requested path in loobee_path.
     const id=new URLSearchParams(location.search).get('v');if(id){await originalOpenVideo(id,false);return}
+    const searchQuery=path.slice(1).replace(/\+/g,' ').trim();
+    if(searchQuery){try{searchTerm=decodeURIComponent(searchQuery)}catch{searchTerm=searchQuery}page='home';category='All';if($('searchInput'))$('searchInput').value=searchTerm;if($('chips'))$('chips').classList.remove('hidden');document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page==='home'));if($('pageTitle'))$('pageTitle').textContent='Search results';showBrowse();await loadData();return}
     pageRoute('home',true);
   }
   window.addEventListener('popstate',()=>{goToPath()});
